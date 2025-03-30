@@ -1,4 +1,5 @@
 
+
 # django rest
 
 
@@ -25,9 +26,9 @@ app\
 
 ### Browsabel API
 ```py
-REST_FRAMEWORK = {           # globally change
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',          # json insted of browsable API
+REST_FRAMEWORK = {                             # how to change the browsable api page in our browser? 
+    'DEFAULT_RENDERER_CLASSES': (               # gobally change
+        'rest_framework.renderers.JSONRenderer',          # pure json insted of browsable API
     )
 }
 class BookList(generics.ListAPIView):                # for specific view   (not recommended)
@@ -37,23 +38,23 @@ class BookList(generics.ListAPIView):                # for specific view   (not 
 ### function base view
 ```py
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view        # error: .accepted_renderer not set on Response
 from rest_framework import status
 
-@api_view(['GET','PUT','DELETE'])            # decorator for views   # PUT = update all fileds, PATCH = update one or some fields
-# handles unsupported methods with a `405 Method Not Allowed` response.
-def book_list(request,pk):                   # function base view without decorator gives 'AssertionError'
-    if request.method == 'GET':
+@api_view(['GET','PUT','DELETE'])            # decorator for function base views   # PUT = update all fileds, PATCH = update one or some fields
+def book_list(request,pk):                   # function base view without decorator gives 'AssertionError' for .accepted_renderer
+    if request.method == 'GET':           # @api_view handles unsupported methods with a `405 Method Not Allowed` response.
         try:                                           # if any books does not find we get error
-            books = Book.objects.all()                   # Get a queryset of books (complex data)
+            books = Book.objects.all()                   # Get a queryset of books in the form of model instance (complex data)
+            book_list = Book.objects.values()            # Get qyueryset of books in the form of dictionary
             serializer = BookSerializer(books, many=True)   # Serialize the queryset to object  # use many when we have more than one data
-            return Response(serializer.data)
-        except ObjectDoesNotExist:
+            return Response(serializer.data)          # alternative way for serializer: we can use JsonResponse in django-core
+        except ObjectDoesNotExist:              # if you dont use 'many=True' --> Got AttributeError when attempting to get a value for field 
             return Response({"error": "Books do not exist"}, status=404)
 
     if request.method == 'PUT':                       # PUT is for update all fields
         book = Book.objects.get(pk=pk)                # Get pk from url
-        serializer = BookSerializer(book, data=request.data)  # Deserialize the data with (old data, new data)
+        serializer = BookSerializer(book, data=request.data)  # Deserialize the data with (old data, new data) or (queryset, data)
         if serializer.is_valid():
             myvar = serializer.validated_data['active']       # we can access validated data using dictionary
             serializer.save()
@@ -78,7 +79,7 @@ class BookList(APIView):                 # class base view inherit from APIView 
 
     def post(self, request, pk):                        # POST method is for creating a new data
         serilizer = BookSerializer(data=request.data)    # Modelserializer (not regular serializer) is equal for both get and post 
-        if serializer.is_valid():
+        if serializer.is_valid():                      # if we want to create an object with serializer we should use 'data=' as an argument
             serializer.save()
             return Response(serilizer.data)            # status is 200 by default
         else:
@@ -88,12 +89,12 @@ class BookList(APIView):                 # class base view inherit from APIView 
 The mixin classes provide specific view behavior by action methods( not handler methods like get(), post(), etc.)
 ```py
 from rest_framework import mixins, generics
-#GenericAPIView extends APIView, adding commonly required behavior for list and detial views.
+# GenericAPIView extends APIView, adding commonly required behavior for list and detial views.
 class BookList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
     # for using mixins we need to inherit from GenericAPIView in the last
-    queryset = Book.objects.all()                    # queryset is a keyword for the class
-    serializer_class = BookSerializer                # serializer_class is a keyword for the class
-
+    queryset = Book.objects.all()                    # queryset is a keyword for the class otherwise we should override the `get_queryset()` method
+    serializer_class = BookSerializer                # serializer_class is a keyword for the class otherwise override the `get_serialiser()` method
+    # there is no need for passing something to serializer
     def get(self, request, *args, **kwargs):          
         return self.list(request, *args, **kwargs)   # list() acion provided by ListModelMixin
     def post(self, request, *args, **kwargs):         # in browsable API creates 'HTML form' and 'Raw data'
@@ -101,7 +102,7 @@ class BookList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericA
 
 
 class BookDetail(mixins.RetrieveModelMixin, generics.GenericAPIView):
-    queryset = Book.objects.all()                    # there is no need to recive pk from url
+    queryset = Book.objects.all()           # pk should send in http params but there is no need to recive pk from url
     serializer_class = BookSerializer
     def get(self, request, *args, **kwargs):
         pk = kwargs.get('pk')                       # there is no need for doing this
@@ -115,16 +116,16 @@ from rest_framework import generics         # Generic views reduce the amount of
 class BookList(generics.ListCreateAPIView):    
 # ListCreateAPIView already have 'def get(self, req, *args, **kwargs)' section inside its implementation
     queryset = Book.objects.all()               # there is no need for get() method
-    serializer_class = BookSerializer
+    serializer_class = BookSerializer           # there is no need for Response and HTTP_Code
 
 class BookDetail(generics.RetrieveUpdateDestroyAPIView):  # mixed one  # get(), update(), delete()
-    queryset = Book.objects.all()
+    queryset = Book.objects.all()         # just send an id in http params
     serializer_class = BookSerializer
 
 class BookList(generics.ListCreateAPIView):    
     serializer_class = BookSerializer
-    def get_queryset(self):        # instead of 'queryset' we can override get() method for customazation
-        pk = self.kwargs.get('pk')    
+    def get_queryset(self):        # instead of 'queryset' we can override it for customazation
+        pk = self.kwargs.get('pk')   # queryset handles extracting pk from url params by default
         return Book.objects.filter(author=pk)
 
     def perform_create(self, serializer):  # overwrite # perform_update(), perform_destroy()
@@ -155,7 +156,7 @@ class BookViewSet(viewsets.ModelViewSet):  # for list and detail we create one c
             return Response(serializer.data)
     def update(self, request, pk):      # for put method
     def destroy(self, request, pk):     # for delete method
-# after creating viewset we need to register it in routers
+# after creating viewset we need to register it in routers in urlpatterns bcz it has both list and retrieve
 from rest_framework import routers               # routers help us to combine all type of link
 router = routers.DefaultRouter()                 # with routers we can write one url for both list and detail
 router.register('books', BookViewSet.as_view(), basename='book')   # /books + /books/12
@@ -181,72 +182,73 @@ we have 2 types of serialization: 1. Regular serializer 2. ModelSerializer
 **Serialization**: process of converting complex data types (such as Django models or querysets) into a format that can be easily rendered into JSON
 **Deserialization**: process of converting JSON into a Python object
 In django-core for serialization we have 3 steps: 1. get a queryset 2. convert queryset to object or list 3. convert object to json using JsonResponse
-we have two ways to serialize and deserialize in django rest: 1. ModelSerializer 2. Serializer
 ```py
 # serializer.py
-from rest_framework import serializers                 # with serializer everything is mapped automatically
+from rest_framework import serializers                 # with regular serializer we should map everything manually
 
-class BookSerializer(serializers.Serializer):          # serializer is a class inherited from method 1. Serializer
+class BookSerializer(serializers.Serializer):          # serializer is a class inherited from method 1. regular Serializer
     id = serializers.IntegerField(read_only=True)       # read_only means it can not be updated
     name = serializers.CharField(max_length=100)        # we can use validators [serializer level validations]
     active = serializers.BooleanField()                 # these property names should be same as in model
-
-    def create(self, validated_data):                    # create method for 'POST' method for deserializing data
-        return Book.objects.create(**validated_data)      # save to database
+    # if we dont mention a field of model in serializer, that field wont map and we can not see that in the output
+    def create(self, validated_data):                    # create method for 'POST' method in order to deserializing data
+        return Book.objects.create(**validated_data)      # using Model for save to database     
+        # we must impleament these methods otherwise we get error for post request
+        # validated_data gets data from queryset inside views:   serilizer = BookSerializer(queryset)
         # The **validated_data syntax unpacks the dictionary into keyword arguments
-
-    def update(self, instance, validated_data):          # update method for 'PUT' method for deserializing data
-        instance.name = validated_data.get('name', instance.name)    # instance is the old object in the database
-        instance.active = validated_data.get('active', instance.active)   # validated_data is the new data
-        instance.save()
-        return instance
-    
+    def update(self, instance, validated_data):          # update method for 'PUT' method in order to deserializing data
+        instance.name = validated_data.get('name', instance.name)   # update 'name' of instance if the 'name' existed in the instance
+        instance.active = validated_data.get('active', instance.active)   # validated_data is the dict of new data
+        instance.save()    # instance is the old object in the database
+        return instance    # instance and validated_data comes from views: serilizer = BookSerializer(queryset, data= req.data)
 ```
 
 ### Serializer Validations
 we have 3 types of validations: 1. Filed level validations 2. Object level validations 3. Serializer level validations
 ```py
-from django.core.validators import MaxValueValidator, MinValueValidator   # value (not length)
-
+from django.core.validators import MaxValueValidator, MinValueValidator   # value fo int (not length for string)
+# validatros is equal for both ModelSerializer and  regular serializer
 class BookSerializer(serializers.Serializer):          # Each 'Serializer Filed' has 'core arguments' like read_only, write_only, required, ...
-    id = serializers.IntegerField(read_only=True)       #   serializer level validations  
+    id = serializers.IntegerField(read_only=True)       # serializer level validations  
     name = serializers.CharField(max_length=100)        # serializer level validations
-    description = serializers.CharField(validators=[description_length])    # validator function (serializer level validations)
+    my_custome_filed = serializers.CharField(default="me", read_only= True)   # custome field can not be existed in our model and db
+    description = serializers.CharField(validators=[myfunction])    # validator function (serializer level validations)
     rating = sesrializers.PositiveIntegerField(validators= [MinValueValidator(1), MaxValueValidator(5)])   # serializer level validations
-    
-    def validate_name(self, value):                      # Filed level validations for specific property (validate_FILEDNAME)
-        if len(value) < 3:
+    # in this exmaple name is required bcz it  does not have a default value, so if our request does not contain it we get error    
+    def validate_name(self, value):                      # Field level validations for specific property (validate_FILEDNAME)
+        if len(value) < 3:     # value is the value of name attribute
             raise serializers.ValidationError("Name is too short")  # return a json {name: "Name is too short"}
-        else:
+        else:                                         # this validations only work for post or put requests (not get request)
             return value
     
     def validate(self, data):                            # Object level validations [we access all properties]
-        if data['name'] == data['active']:
-            raise serializers.ValidationError("Name can not be same as active")   # return a json {non_field_errors: "Name can not ..."}
+        if data['name'] == data['active']:              # data is obj
+            raise serializers.ValidationError("Name can not be same as active")   # send a json {non_field_errors: "Name can not ..."}
         else:
             return data
-def description_length(value):   # function outside the class
-    if len(value) < 10:
-        raise serializers.ValidationError("Description is too short")
+
+def myfunction(value):   # function outside the class
+    if len(value) < 10:   # no need for return in validatros function
+        raise serializers.ValidationError("Description is too short")   # raise not return
 ```
 #### 2. ModelSerializer
 ```py
 class BookSerializer(serializers.ModelSerializer):   # there is no need to create() and update() anymore
 
-    full_name = serializers.SerializerMethodField()    # custom field
-
-    class Meta:                                      # with ModelSerializer default Fields with default validatros will be mapped automatically
-        model = Book
+    full_name = serializers.SerializerMethodField(read_only=True)    # custom field 
+    first_name = serializers.CharField(mex_length=50)   # we can override fields if we want in ModelSerializer like regular serializer
+    # if you dont use read_only for custome fields it gets error for post request bcz this field is not in db
+    class Meta:                         # with ModelSerializer default Fields with default validatros will be mapped automatically
+        model = Book                     # in regualt serializer we do not introduce the model
         fields = '__all__'               # all fields will be serialized
-        fields = ['name', 'active']     # only these fields will be serialized 
-        exclude = ['rating']             # these fields will not be serialized         
+        fields = ['first_name', 'active']     # only these fields will be serialized 
+        exclude = ['rating']             # these fields will not be serialized [we can not use 'exclude' with 'fields' together]         
     
-    def get_full_name(self, obj):                      # it should start with 'get_'
+    def get_full_name(self, obj):                      # SerializerMethodField should start with ['get_' + PROPERTYNAME ]
         return obj.first_name + " " + obj.last_name      # we access all properties with 'obj'
 
-
-    def validate_name(self, value):                      # Filed level validations like Regular Serializer
-        pass
+    def validate_first_name(self, value):                      # Filed level validations like Regular Serializer
+        pass                                                # ['validate' + PROPERTYNAME]
 
     def validate(self, data):                            # Object level validations like Regular Serializer
         pass
@@ -263,15 +265,15 @@ class AuthorSerializer(serializers.ModelSerializer):  # nested serializer
     class Meta:                       # (many= True) means return an array of objects
         model = Author               # one book have one author but author can have many books
         fields = '__all__'           # books is not a model field for author
+        depth = 1                     # shows nested object instead of id  [makes trouble for post request]
 
 class BookSerializer(serializers.ModelSerializer):   # nested serilaizer
-    # inside Book model we have a foreign key and besides thad id we want to show the whole object
-    author_obj = serializer.SerializerMethodField()  # first we create a custom field
-    class Meta:
-        model = Book
+    author_obj = serializer.SerializerMethodField()  #  custom field
+    class Meta:     # inside Book model we have a foreign key and besides thad id we want to show the whole object
+        model = Book           # insted of 'get_author_obj' we can just use 'depth = 1'
         fields = '__all__'
 
-    def get_author_obj(self, obj):                      # get_
+    def get_author_obj(self, obj):                      # get_   
         return AuthorSerializer(obj.author).data        # return whole content of obj by passing the id
 ```
 
@@ -285,7 +287,7 @@ class BookSerializer(serializer.HyperLinkedModelSerializer):   # very similar to
 ### User Model
 ```py
 from django.contrib.auth.models import User    # using user model in models as field
-class Review(models.Model):                  # get user from /admin page
+class Review(models.Model):                  # get user from /admin page for using in other models
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reviews')        
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')      # we should change serializer too
     content = models.TextField()
@@ -305,11 +307,11 @@ class ReviewCreate(generic.CreateAPIView):        # using user model in views
 ### Permissions
 with permissions a stranger can not 'access' your data (restriction)
 we have two levels: 1. setting level(for all links) 2. object level(for specific links)
-django provides 3 types of permissions: 1. IsAuthenticated(log in) 2. IsAdminUser 3. IsAuthenticatedOrReadOnly(only get for not login)  4. AllowAny (by default)
+django provides 3 types of permissions: 1. IsAuthenticated(log in) 2. IsAdminUser 3. IsAuthenticatedOrReadOnly(only get request for not login users)  4. AllowAny (by default)
 #### permissions: 1.setting level
 ```py
 REST_FRAMEWORK = {           # setting.py
-    'DEFAULT_PERMISSION_CLASSES': [       # globally accessible
+    'DEFAULT_PERMISSION_CLASSES': [       # default = globally accessible
         'rest_framework.permissions.IsAuthenticated'    # only accessed by logged in users
     ]
 }
@@ -330,20 +332,26 @@ def Booklist(request):                  # function base view
    pass 
 ```
 #### custome permissions
+|api\
+|----permissions\
 ```py
-from rest_framework import permissions
+from rest_framework import permissions       # for customazation we can override two methods
 class AdminOrReadOnly(permissions.IsAdminUser):    # my custome permission   # we can inherit fomr BasePermission or so on
     def has_permission(self, request, view):
-        admin_permission = super().has_permission(request, view)    # if the user is admin or not
-        admin_permission = bool(request.user and request.user.is_staff)     # if the user is admin or not
+        base_permission = super().has_permission(request, view)             # check default permission that inherit from parent
+        admin_permission = bool(request.user and request.user.is_staff)     # check if the user is admin or not  (is_staff means admin)
         return admin_permission or request.method == 'GET'   # admin or readonly
-
-class ReviewUserOrReadOnly(permissions.BasePermission):   # access only by owner otherwise read only
-    def has_object_permission(self, request, view, obj):
+        if request == 'DELETE':                        # we can customize for specific methods
+            return True                             # request.user returns 'AnonymousUser' or username
+        if request.user.username = "mohamad":        # check specific users
+        if request.user.IsAuthenticated:             # check authentication
+        # has_permission runs before the view is called and checks general permissions and only access to the req and view but not object
+class ReviewUserOrReadOnly(permissions.BasePermission):      # has_object_permission runs after the view gets the specific object
+    def has_object_permission(self, request, view, obj):     # object-level : permissions for a specific 'model' instance
         if request.method in permissions.SAFE_METHODS:          # SAFE_METHODS is GET
-            return True
-        else:                                                 # POST, PUT, PATCH, DELETE
-            return obj.reviewer == request.user           # check if the reviewer is the same as the user 
+            return True                                        #  access only by owner otherwise read only
+        else:                                                 # else means: POST, PUT, PATCH, DELETE
+            return obj.reviewer == request.user           # check if the reviewer is the same as the user [access object level]
 ```
 
 ### Temporary login
@@ -360,7 +368,7 @@ JWTAuthentication is a third-part package which is importnat
 
 #### 1. Basic Authentication
 ```py
-REST_FRAMEWORK = {        # setting.py   1. Basic Authentication
+REST_FRAMEWORK = {        # setting.py   # 1. BasicAuthentication uses base64 method
     'DEFAULT_AUTHENTICATION_CLASSES': [          # apply to all view classes
         'rest_framework.authentication.BasicAuthentication'   # globally apply for permission_classes = [permissions.IsAuthenticated]
     ]  # inside Headers:---> Authorization: Basic <base64 encoded username:password> 
@@ -369,7 +377,7 @@ REST_FRAMEWORK = {        # setting.py   1. Basic Authentication
 
 ### 2. Token Authentication
 ```py
-REST_FRAMEWORK = {        # setting.py   2. Token Authentication
+REST_FRAMEWORK = {        # setting.py   2. Token Authentication uses token db system
     'DEFAULT_AUTHENTICATION_CLASSES': [          # apply to all view classes
         'rest_framework.authentication.TokenAuthentication'   # globally apply for permission_classes = [permissions.IsAuthenticated]
     ]  # inside Headers:---> Authorization: Token <token>
@@ -382,17 +390,16 @@ INSTALLED_APPS = [
 
 ###### a. Login
 First create a new app: userapp
-
 userapp\
 |---api\
 |   |---views.py
 |   |---urls.py
 |   |---serializers.py
 ```py
-from rest_framework.authtoken.views import obtain_auth_token   # its a login link that we can send our request
-urlpatterns = [
+from rest_framework.authtoken.views import obtain_auth_token   # its a login non-browsable link that we can send our request
+urlpatterns = [      # its not a login page (Browsabel api) like temporary login (api-auth/)
     path('account/',include('userapp.api.urls')),            # middle url
-    path('login/',obtain_auth_token, name= 'login'),           # send formdate to this url [username,password] and gives us token as response
+    path('login/',obtain_auth_token, name= 'login'),           # send formdata to this url [username,password] and gives us token as response
     # for a pair of (username + password) it gives us a specific token
     # for any request to get data we should add this token in the header
 ]
@@ -400,25 +407,25 @@ urlpatterns = [
 
 ###### b. Registeration
 the process of creating Registeration:
-1. Model:        create User model from django.contrib.auth.models
-2. Modle:        auto create token
-3. Serializer
-4. View
-5. URL
+1. Model:       auto create token
+2. Serializer
+3. View
+4. URL
+
 
 ```py
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
 class RegistrationSerializer(serializers.ModelSerializer):
-    password2 =serializers.CharField(style={'input_type': 'password'}, write_only = True)   # write_only ensures its not included in the response
-    class Meta:
-        model = User
-        field = ['username', 'email', 'password', 'password2']    # we need send these fields in the post method
+    password2 =serializers.CharField( write_only = True)   # write_only ensures its not included in the response
+    class Meta:                                        # user in django model has 3 fields by deault when we create them
+        model = User                                   # you can write validation for email but by default it is optioanl
+        field = ['username', 'email', 'password', 'password2']    # map these fields for recive the post request and respone to it
         extra_kwargs = {                                        # use form-date in post method
-            'password': {'write_only': True}                  # do not return password in response
-        }
-    def save(self):    # without this method we will get error bcz of password2
+            'password': {'write_only': True}                  # write_only has 'Required= True' inside it
+        }    # Alternatively we can specify password field explicitly on the serializer class like password2
+    def save(self):    # without overriding save method we get error bcz of password2 is not in the model and django can not save it
         password = self.validated_data['password']
         password2 = self.validated_data['password2']
 
@@ -428,25 +435,25 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if User.objects.filter(email = self.validated_data['email']).exists():
             raise serializers.ValidationError({'email': 'Email already exists'})
         
-        account = User(          # create an instance of User
+        account = User(          # create an instance of User    # another syntax: User.objects.create()
             email = self.validated_data['email'],     # do not return password and password2
             username = self.validated_data['username']
         )
-        account.set_password(password)
+        account.set_password(password)         # for hashing
         account.save()
-        return account
+        return account            # return when you call serializer.save() for post request
 
 ### views.py
 from rest_framework.authtoken.models import Token        
-from user_app import models         # first create a token model and then import  for 'create_auth_token'
+from user_app import models         # first create a token model and then import  for 'create_auth_token' for placing the snippet code
 
 @api_view(['POST'])
-def register_view(request):
+def register_view(request):     # usual view
     if request.method == 'POST':
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            account= serializer.save()    # return from serializer save method
-            data = {
+            account= serializer.save()    # returns from serializer save() method
+            data = {         # we should customise the response bcz we want to send token after registration
                 'username': account.username,
                 'email': account.email,
                 'token': Token.objects.get(user=account).key,    # access key of {'token': 7e4s...}
@@ -458,23 +465,21 @@ def register_view(request):
 
 
 ### models.py  ===> Token model ---> this is for auto creating tokens for registreation
-from django.conf import settings        # Doc
-from django.db.models.signals import post_save
+from django.conf import settings        # copy this snippet code from Doc
+from django.db.models.signals import post_save    # generating tokens by using signals
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
-
-@reciever(post_save, sender=setting.AUTH_USER_MODEL)
+@reciever(post_save, sender=setting.AUTH_USER_MODEL)         # catch the User's post_save signal.
 def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
-        Token.objects.create(user=instance)       
-         
+    if created:                                   # when a user is created, a token will create also
+        Token.objects.create(user=instance)        # place this snippet code in views
 ```
 
 ##### c. Logout
 ```py
 @api_view(['POST'])
 def logout_view(request):
-    if request.method == 'POST':
+    if request.method == 'POST':             # delete token in db
         request.user.auth_token.delete()     # req.user means current user
         return Response(status=status.HTTP_200_OK)
 ```

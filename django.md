@@ -21,7 +21,7 @@ pip freeze > requirement.txt          # create requirement.txt for sharing this 
 python -m django --version            # django version
 django-admin                         # make sure django is installed
 django-admin startproject myfolder  # first command for create a folder project
-python manage.py startapp chanllenges_app        # create app (we can have multiple apps inside main project) [add this name in INSTALLED_APPS]
+python manage.py startapp IMDB_app        # create app (we can have multiple apps inside main project) [add this "IMDB_app" in INSTALLED_APPS]
 python manage.py runserver                # start server
 python mange.py makemigrations            # run this when change the structure of models [method no req] (convert model into sql query)
 python mange.py migrate                   # run all migrations and update database
@@ -31,8 +31,12 @@ python mange.py test                      # run tests
 ```
 
 ### makemigration error 
+if you do not run this command after changing your models, every request to that model gets error + you can not access admin panel
 error: please enter the default value as valid python
 solutions: 1. add default value: `default="some value"` 2. add `null=True` 3. one-off defualt value (use None if its nullable)
+
+### How to read errors?
+duration
 
 
 ### User admin page
@@ -58,9 +62,13 @@ urlpatterns = [
 ## Model
 ```python
 #  a model is a Python class that represents a database table.
-# after creating a model: 1. make migrations 2. migrate 3. register the model in the admin site
+# after creating a model: 1. make migrations 2. migrate 3. register the model in the admin file
+# how to register: admin.site.register(Book)
 class Book(models.Model):      # inherit from models.Model
     title = models.CharField(max_length=50, null=False, blank=Ture, editable=False)   # max_length is required
+    # blank is used for charFiled which means 'empty string' in forms of frontend can be accepted
+    # null is used for dateFiled which means can be null porgramatically in db (but still required in forms)
+    # None means absense of a value
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)]) # validators
     is_bestselling = models.BooleanField(default = False)
     slug = models.SlugField(default ="", db_index=True, unique=True)  # slug HarryPotter ==> harry-potter db_index make it faster
@@ -110,9 +118,11 @@ def BookView(request):       # Function base view
 class BookView(View):
     def get(self, request):       #Class base view for get method
     def post(self, request):      #Class base view for post method       
+```
 
-
-class BookView(TemplateView):    #Class base view for render a temolate for get method
+#### Template VIEW
+```py
+class BookView(TemplateView):    #Class base view for render a template for get method
     template_name = "1.html"       # random_name gets the template as render
     def get_context_data(self, **kwargs):    # send date into template
         context = super().get_context_data(**kwargs)
@@ -120,7 +130,6 @@ class BookView(TemplateView):    #Class base view for render a temolate for get 
         loaded_review = self.object          # load data from model 
         context["message"] = "for insert into temolate"
         return context
-
 
 class BookListView(ListView):    #Class base view for render a template for get method
     template_name = "1.html"       # random_name gets the template as render
@@ -151,7 +160,6 @@ class BookFormView(CreateView):    # saves data in db automatically
     fileds = "__all__"    # or a Model Form
     template_name = "1.html"
     sucess_url ="/thanks"   
-
 ```
 
 # templates
@@ -182,7 +190,7 @@ context==> {{age}}
 
 ## Django shell
 ```py
-from book.models import Book      # app.models import className
+from app_name.models import Book      # app.models import className
 author = Author(first_name="aa", last_name="aa")       # create object
 a = Book(title = "aa", rating = 45, author = author)   # create object with ForeignKey
 a.save()                          # save data in db
@@ -198,7 +206,7 @@ Book.objects.values()                # query set of dictionaries with all values
 Book.objects.all().order_by("title")                # order by title [-title for descending]
 Book.objects.count()              # number of objects
 Book.objects.aggregate(Avg("rating"))    # average of rating. [retrun a dictionary]
-Book.objects.create(title="aa", rating=45)   #another way to save
+Book.objects.create(title="aa", rating=45)   # create an instance using django models --> not use like class: Book(title="aa")
 Book.objects.get(id=1)                      # find unique data (get(title="aa"))
 Book.objects.filter(rating="11").filter(...)              # find multiple data (rating__lte=10) (title__contains="Star") [modifier]
 Book.objects.filter(author__first_name="aa")    # filter with ForeignKey
@@ -215,7 +223,7 @@ a = get_object_or_404(Book, pk=1)      # alt for get with try except ==> get dat
 
 ## admin
 ```python
-from django.contrib import admin
+from django.contrib import admin         # from app_name.models import model_name
 from book.models import Book            # import your model from your app
 class BookAdmin(admin.ModelAdmin):    # name if up to you
     readonly_fields = ("id",)                       # read only field for noteditable fields
