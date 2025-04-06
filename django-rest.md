@@ -162,7 +162,7 @@ router = routers.DefaultRouter()                 # with routers we can write one
 router.register('books', BookViewSet.as_view(), basename='book')   # /books + /books/12
 urlpatterns = [                               # its better to not use custome urls with viewsets
     path('', include(router.urls))     # empty string
-]
+]   # we can add "-list" and "-detial" at the end of names_url for viewsets
 ```
 
 ### Class base view (5. using ModelViewSet)
@@ -382,9 +382,9 @@ REST_FRAMEWORK = {        # setting.py   2. Token Authentication uses token db s
         'rest_framework.authentication.TokenAuthentication'   # globally apply for permission_classes = [permissions.IsAuthenticated]
     ]  # inside Headers:---> Authorization: Token <token>
 }  
-INSTALLED_APPS = [
-    'rest_framework',               # base requirement for django rest
-    'rest_framework.authtoken',     # token based authentication
+INSTALLED_APPS = [              # base requirement for django rest
+    'rest_framework',               # no need for userapp, just authtoken
+    'rest_framework.authtoken',     # token based authentication      
 ] # manage.py migrate  ---> bcz it creates a new table that is going to store tokens
 ```
 
@@ -488,7 +488,7 @@ def logout_view(request):
 `pip install djangorestframework-simplejwt`
 JWT is not depondent on databse like 2. Token Authentication
 The only disadvantage of JWT is that we can not control the tokens from server and db.
-JWT does not need logout, we just need to delete the token from localstorage
+JWT does not need logout, we just need to delete the token from local storage.
 ```py
 ### settings.py
 REST_FRAMEWORK = {    # setting.py   3. JWT Authentication
@@ -539,14 +539,14 @@ REST_FRAMEWORK = {     # Setting.py
     'DEFAULT_THROTTLE_CLASSES': [    #There are two types of throttling: 
         'rest_framework.throttling.AnonRateThrottle',           # 1. annonymous(AnonRateThrottle) 
         'rest_framework.throttling.UserRateThrottle'            # 2. per user(UserRateThrottle)
-    ],  # this default setting will apply globally to all view classes [commit this one if you want to apply to specific view classes]
-    'DEFAULT_THROTTLE_RATES': {   # after this 5 request per day we get "429 error" (Too Many Request)
+    ],  # DEFAULT_THROTTLE_CLASSES will apply to all view classes globally [comment this one if you dont need]
+    'DEFAULT_THROTTLE_RATES': {   # default rates
         'anon': '5/day',        # an anon user can send 5 request per day
         'user': '10/hour'        # scope user + scope anon
-    }
-}
+    }                      # after this 5 request per day we get "429 error" (Too Many Request)
+}                            # we should introduce all other cutome throttling
 ```
-##### b. Throttling per view
+##### b. Throttling per view class
 ```py
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 class BookList(generics.ListAPIView):     # class base view
@@ -578,21 +578,27 @@ class ReviewCreateThrottle(UserRateThrottle):      # custom throttle class
 ```py
 from rest_framework.throttling import ScopedRateThrottle      # another kind of custome throttling
 class BookList(generics.ListAPIView):     # class base view
-    queryset = Book.objects.all()          # we can combine scopedRate with custome throttle: 1/minute + 100/day
-    serializer_class = BookSerializer
-    throttle_classes = [ScopedRateThrottle]      # with scopedRate we can directly import witout creating any custome throttling class
+    queryset = Book.objects.all()          # with scopedRate we can directly import witout creating any custome throttling class
+    serializer_class = BookSerializer       # just intoduce book-list in settings.py
+    throttle_classes = [ScopedRateThrottle]      
     throttle_scope = 'book-list'         # in settings.py
 ```
 ### Filtering
 Like `where` condition in sql
+We have 3 ways for filtering: 
+1. filtering agiainst current user ---> `self.current.user`
+2. filtering against url         -----> `self.kwargs["username"]`
+3. filtering against query parameters ---> `self.request.query_params["username"]`
+
 ```py
-class BookList(generics.ListAPIView):     
-    serializer_class = BookSerializer                  # easier way to impleament filtering is to use get_queryset()
+class BookList(generics.ListAPIView):                 # instead of pk or id we send something else for filtering like a string
+    serializer_class = BookSerializer                  # easier way to impleament filtering is to use generics for overrideing get_queryset()
+    # we are overriding get_queryset instead of using "queryset = Book.objects.all()"
     def get_queryset(self):                            # 1. filtering against the url (directly maping the value)
-        firstname = self.kwargs.get('fullname')           # browser url: api/books/fullname/  ---> django url: /<str:fullname>/
+        firstname = self.kwargs.get('fullname')           # django url: api/<str:fullname>/
         return Book.objects.filter(author__fullname='pk')      # __firstname is used for accessing fields of foreign key
     def get_queryset(self):                           # 2. filtering against query params 
-        fullname = self.request.query_params.get('fullname', None)    # browser url: api/books/?firstname=ali 
+        fullname = self.request.query_params.get('fullname', None)    # browser url: api/books/?firstname=ali [use & for multiple]
         return Book.objects.filter(author__fullname='pk')      # django url: /api/books/     ---> there is no need for mapping parameters
 ```
 
@@ -613,15 +619,50 @@ class BookList(generics.ListAPIView):             # we should send parameters in
     ordering_fields = ['rating']            # url: /api/?ordering=rating   or =-rating for decending or =rating,age for multiple ordering
 ```
 ### pagination
+
 ##### 1. global pagination
 ```py
-REST_FRAMEWORK ={   # do not use this for object level
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',   # first page is our regular api but bext page wil be diff
+REST_FRAMEWORK ={   # you should change your views if using function base views or class APIView, but no for other views
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',   # first page is our regular api but next page wil be diff
     'PAGE_SIZE': 10   # each req gives us a json like: {count:57, next: url/api/?limit=10&offset=20,resutls=[data]}
-}
+}    # user can change page_size with url
 ```
 
-#### 2. class pagination
+#### 2. pagination in function base views
+```py
+from rest_framework.pagination import PageNumberPagination           # or LimitOffsetPagination()
+
+@api_view(['GET'])                          # in function base view we need paginator
+def book_list(request):                      # we call two function from paginator: 1.paginate_queryset 2.get_paginated_response
+    paginator = PageNumberPagination()      # call type of paginator
+    paginator.page_size = 10               # Set size of the paginator
+    
+    queryset = Book.objects.all()             # paginator is our variable
+    result_page = paginator.paginate_queryset(queryset, request, context={'request': request})         # paginate_queryset()
+    
+    serializer = BookSerializer(result_page, many=True)                # pass result instead of queryset
+    return paginator.get_paginated_response(serializer.data)           # instead of returning serializer.data return paginator
+```
+
+#### 3. pagination in APIView
+```py
+class CustomPagination(PageNumberPagination):       # create a custome pagination class in pagination.py
+    page_size = 5           # we can also set as default in setting.py : 'apps.core.pagination.CustomPagination'
+    page_size_query_param = 'page_size'         # define outside the class for inheritance
+    max_page_size = 100
+
+class BookListView(APIView):
+    pagination_class = CustomPagination
+    
+    def get(self, request):                     # very similar to function base view
+        queryset = Book.objects.all()
+        paginator = self.pagination_class()     # paginator is a variable
+        result_page = paginator.paginate_queryset(queryset, request)
+        serializer = BookSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+```
+
+#### 4. class pagination
 |api
 |---pagination.py
 
@@ -629,9 +670,9 @@ REST_FRAMEWORK ={   # do not use this for object level
 ```py
 from rest_framework.pagination import PageNumberPagination   # recommend     # pagination works with url params
 class BookListPagination(PageNumberPagination):
-    page_size = 10      # default size     # first page url: /api/   ---> next url: /api/?page=2
-    page_query_param = 'p'      # instead of page in url: /api/?p=2
-    page_size_query_param = 'size'     # user can overwrite page_size inside url: /api/?p=3&size=20
+    page_size = 10                # default size     # first page url: /api/   ---> next url: /api/?page=2
+    page_query_param = 'p'      # instead of "page" word in url: /api/?p=2
+    page_size_query_param = 'size'     # user can overwrite "page_size" word inside url: /api/?p=3&size=20
     max_page_size = 100            # user can not overwrite page_size with larger values
     last_page_strings = ['end']     # by default we can get the last page by: /api/?page=last
 
@@ -643,7 +684,6 @@ class BookList(generics.ListAPIView):
 
 ##### b. LimitOffsetPagination
 ```py
-
 from rest_framework.pagination import LimitOffsetPagination  # limit = page_size    offset= number of skip
 class BookListPagination(LimitOffsetPagination):  # offset=10 means skip 10 elements and load from 11
     default_limit = 10      # url: /api/?limit=10&offset=2
@@ -655,8 +695,8 @@ class BookListPagination(LimitOffsetPagination):  # offset=10 means skip 10 elem
 ##### c. CursorPagination
 
 + we do not have `page number` anymore, we just have `next` and `previous`. 
-+ user can not go to specific page number. we force user to click multiple times on `next`.
-+ its depond on ordering and timing (`created` filed inside models). its neccessary.
++ user can not jump to specific page number. we force user to click multiple times on `next`.
++ its depond on ordering and timing (`created` filed inside django models). its neccessary.
 
 ```py
 from rest_framework.pagination import CursorPagination      # cursor pagination does not work with 'OrderingFilter'
@@ -670,41 +710,40 @@ class BookListPagination(CursorPagination):
 ### API Testing
 |app\
 |---tests\
-
+we have two kind of unsuccessful test: 1.failuer 2. errors (syntax)
 ##### 1. Login testing
 
 ```py
-from rest_framework.test import APITestCase
-from rest_framework import status
+from rest_framework.test import APITestCase       # tests.py inside app folder
+from rest_framework import status              #  status 201 means Successful registration
 from django.urls import reverse                 # with reverse we access our urls with named_urls
 from django.contrib.auth.models import User      # import user from djagno models or your models
-from rest_framework.authtoken.models import Token
 
-class RegisterTestCase(APITestCase):    # tests.py inside app folder
+class RegisterTestCase(APITestCase):    
     def test_register(self):           # all methods of class should start with 'test'
         data = {
-            "username" : "testuser",        # django creates this user temporarily
-            "email" : "w5HdA@example.com",   # with self.client we can send HTTP request bcz it inherits from APITestCase
-            "password" : "testpassword",
+            "username" : "testuser",        # django creates this user temporarily just for this test
+            "email" : "w5HdA@example.com",   # create fields for your serializer and model from through the url
+            "password" : "testpassword",     
             "password2" : "testpassword"
-        }
-        response = self.client.post(reverse('register'),data)    # first parameter is url
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)   # what you expected from response?   # 201 means Successful registration
+        }       # with self.client we can send HTTP request bcz it inherits from APITestCase
+        response = self.client.post(reverse('register'), data)    # first parameter is url
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)   # what you expected from response?   
 
 class LoginLogoutTestCase(APITestCase):
 
-    def setUp(self):            # we need initial setup
+    def setUp(self):            # initial setup with "setUp" keyword
         self.user = User.objects.create_user(username="testuser", password="testpassword")     # create user for the class 
-
+    # create user using model and since serializer is not responsible here we do not need email and password2
     def test_login(self):
         data = {
-            "username" : "testuser",
+            "username" : "testuser",          # use the same data in setUp
             "password" : "testpassword"
         }
         response = self.client.post(reverse('login'),data)            # with this named_url it tests our views
-        self.assertEqual(response.status_code, status.HTTP_200_OK)     # the self.client use self.user for login
+        self.assertEqual(response.status_code, status.HTTP_200_OK)     # the self.client use self.user inside setUp for login
 
-    def test_logout(self):
+    def test_logout(self):                                     # from rest_framework.authtoken.models import Token
         token = Token.objects.get(user__username="testuser")    # token authentication using database and we get it from models
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)     # token inside credentials
         response = self.client.post(reverse('logout'))
@@ -729,7 +768,7 @@ class BookTestCase(APITestCase):
         response = self.client.post(reverse('book-list'),data)    # for viewsets we can add "-list" and "-detail" to the end of named_url
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)  # viewsets have one named_url for both list and detail
     
-    def test_book_list(self):                                # book-list and book-detail are named_urls
+    def test_book_list(self):                                   # book-list and book-detail are named_urls
         response = self.client.get(reverse('book-list'))         # just send a get request witout any data
 
     def test_book_individual_element(self):               # first we should create some data using self
