@@ -38,3 +38,78 @@ git clone https://www.github.com/odoo/odoo --depth 1 --branch=16.0 --single-bran
 python odoo-bin            # run odoo
 ```
 
+# Older versions
+In older versions we have '.odoorc' file in the home directory, but for newer versions we have 'odoo.conf' file.
+
+## odoorc
+```py
+[options]
+db_host = localhost
+db_port = 5432
+db_user = odoo
+db_password = odoo
+db_name = odoo
+addons_path = custome_addons
+```
+
+## custome addons
+```
+|custome_addons\            # do not create custome addons folder inside odoo folder
+|--- demo\
+|--- data\
+|--- security\
+|--- static\
+|--- views\
+|--- controllers\
+|--- models\
+|--- templates\                  #
+|---__init__.py
+|---__manifest__.py
+```
+
+#### addons: 1.__manifest__.py
+for each addons we a manifest file containing a dictionary that specifies the metadata for addons.
+```py
+{    # name is required but some of them are optional
+    "name" : "Employee",          # name of addon
+    "category" : "Tools",         # category of addon
+    "data" : [
+        "security/ir.model.access.csv",       # a file in security folder 
+    ],
+    "depends" : []                    #  Odoo modules which must be loaded before this one
+    "demo" : [],                         # fake data if you checked in the browser for demonstratoin mode
+}      
+```
+### addnos: 2. __init__.py
+```py
+from . import models
+```
+
+## Models
+|models
+|---property.py
+|---__init__.py
+
+#### Models: 1. property.py
+```py
+from odoo import api, fields, models
+class Property(models.Model):
+    _name = "property"                                  # name of table in db:  
+    _description = "Property"
+    name = fields.Char(string = "fullName", required = True)  # fullName is the name inside view
+    description = fields.Text(string = "Desc", required = True)               # Text means multi line string 
+    price = fields.Float(string = "expected price", readonly = True)
+    number = fields.Integer(string = "Number")
+    date = fields.Date(string = "Date")
+    marrage = fields.Boolean(string = "Marriage", default = False)   # in selection we  have list of tupples
+    direction = fields.Selection(string = "Direction", selection = [("north", "North"), ("south", "South")])
+    # id, create_date, create_uid, write_date, write_uid          # these are automatically created by odoo
+```
+
+#### Models: 2. __init__.py
+
+```py
+from . import property
+
+```
+
