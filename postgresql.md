@@ -175,24 +175,50 @@ we have to first initilize the storge area on the disk before we any operation o
 
 ## STOP, START, PostgreSQL
 ```bash
-sudo service start postgresql      # stop, restart, status
-sudo systemctl start postgresql     # stop, restart, status
-# WINDOWS ===> go to services
+sudo service start postgresql      # stop, restart, status in linux
+sudo systemctl start postgresql     # stop, restart, status in linux
+# WINDOWS ===> go to services or:
+net stop postgresql-x64-16                 # 16 is version
+net start postgresql-x64-16               # windows cmd
 ```
 
 ## windows vs linux
 in windows we should use "" double cotation but in linux not
 in windows we should use `-U user` but in linux we should login as this user
 
+
+#################################################################################################
+
 ## login
 ```bash
-psql -U postgres                                # -U for user. default user is postgres
+psql -U postgres                                # -U for user. default user is postgres, default table is postgres
+psql -U username -d database                   # for non-superusers enter database
 ```
-## start postgres
-```bash
-net stop postgresql-x64-16                 # 16 is version
-net start postgresql-x64-16               # windows cmd
+# psql commands
+```bsah
+\?                                          # help
+\! echo 'hello world'                        # terminal command by \!
+exit or \q                                   # exit psql
+\l                                          # list databases
+\conninfo                                   # information about current database
+\c postgres                                 # connect to database default database 
+\c postgres ali                             # connect to db postgres as user ali
+\du                                         # describe list all users
+\dn                                         # describe list all schemas
+\di                                         # describe list all indexes
+\dt                                         # list all tables
+\dt+                                        # list all tables with detail
+\d customers                                  # describe table columns
+\df \dv \ds                                          # list all f:functions v:views s:sequences
+\g                                         # execute previous successful command
+\e                                         # edit previos command
+\ef inc                                          # edit function inc
+\timing                                        # timing on
+\o outfile.txt                                 # redirect output to outfile.txt
+\set AUTOCOMMIT off                            # disable autocommit after transactions. use [rollback] or [commit] command after that
+\i 1.sql                                       # import sql file
 ```
+
 
 ## start cluster in linux
 ```bash
@@ -266,29 +292,6 @@ drop schema fincance;                            # drop schema
 drop schema fincance cascade;                    # drop schema with all dependencies (force)
 ```
 
-# psql comands
-```bsah
-\?                                          # help
-\! echo 'hello world'                        # terminal command by \!
-exit or \q                                   # exit psql
-\l                                          # list databases
-\conninfo                                   # information about current database
-\c postgres                                 # connect to database default database 
-\du                                         # describe list all users
-\dn                                         # describe list all schemas
-\di                                         # describe list all indexes
-\dt                                         # list all tables
-\dt+                                        # list all tables with detail
-\d customers                                  # describe table columns
-\df \dv \ds                                          # list all f:functions v:views s:sequences
-\g                                         # execute previous successful command
-\e                                         # edit previos command
-\ef inc                                          # edit function inc
-\timing                                        # timing on
-\o outfile.txt                                 # redirect output to outfile.txt
-\set AUTOCOMMIT off                            # disable autocommit after transactions. use [rollback] or [commit] command after that
-\i 1.sql                                       # import sql file
-```
 ### types of shotdown
 1. Smart ===>disallows new connection but let existing setions work noramally
 2. Fast(default) ===> kill all current transactions
@@ -351,6 +354,7 @@ PostgreSQL stores metadata information about the database and cluster in the pg_
 ```bash
 select * from pg_database                 # display all databases info like \l
 select current_user()
+select current_database()
 ```
 
 ## time
