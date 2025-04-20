@@ -36,7 +36,9 @@ git clone https://www.github.com/odoo/odoo --depth 1 --branch=16.0 --single-bran
 
 ## command line
 ```bash
-python odoo-bin            # run odoo
+python odoo-bin                            # run odoo
+python odoo-bin -u module_name           # update a module
+python odoo-bin -i module_name           # install a module
 ```
 
 ## URLs
@@ -53,6 +55,7 @@ runbot.odoo.com
 # Graphic tasks
 1. Activate the developer mode in settings 
 2. find all models in settings
+3. find the id of a view from dashboard `Bug icon\Edit View: Form`
 
 ## odoo.conf
 + you can see a configg file inside: `odoo/debian/source/odoo.conf`
@@ -122,7 +125,7 @@ addons_path = addons,C:\custome_addons
 
 ### addnos: 2. __init__.py
 ```py
-from . import models
+from . import models             # import all __init__ files
 ```
 
 ## Models
@@ -170,9 +173,9 @@ class Property(models.Model):
     offer_ids = fields.One2manay("offerModel","property_id", string="offer_ids")      # first argument is _name of another model called comodel_name and the second argument is inverse filed
     phone = fields.Char(string="Phone", related="author_id.phone")      # "related field" should be many2one in the same model
     # phone is related filed and its inside form for new data, when user select an author_id we will see the phone number of him
-class offer(models.Model):    # for One2many we need to create Many2one but not vice versa
+class offer(models.Model):    # for One2many we need to create Many2on field in comodel 
     _name = "offer"          # Because a One2many is a virtual relationship
-    property_id = Many2one("property", string="property_id")
+    property_id = Many2one("property", string="property_id")        # 
 ```
 
 ###### Models: 4.related field
@@ -258,8 +261,17 @@ class TransientOffer(models.TransientModel):        #   temporary data storage
      pass
 ```
 
+#### Models: 6. Inheritance
+```py
+class ModelName(models.Model):
+    _name = "model.name"
+    _inherit = "parent.model"
+    price = fields.Char()         # we can overridign a field by re-daclaring it
+    def method(self):             # we can override the methods of model
+        return super()             # if we use super() it runs the overriding method in the parent also
+```
 
-#### Decorators
+#### Models: 7.Decorators
 + you can see all of method decorators in  Odoo code source : `odoo/api.py`
 
 ###### 1. @api.auovacuum
@@ -299,10 +311,10 @@ def _check_description(self):                  # @api.constrains only apply to n
 ###### 4. @api.model_create_multi
 ```py
 @api.model_create_multi                   # takes a list of dictionaries and creates multiple records at once
-def create(self, vals_list):               # create() is an ORM method
+def create(self, vals_list):               # create() is an ORM method and with decorator we can override it
     for vals in vals_list:                # vals_list can be a list of dictionaries or a single dictionary 
-        vals['name'] = vals['name'].upper()
-    return super(ModelName, self).create(vals_list)               # return super().create() for creating
+        vals['name'] = vals['name'].upper()      # vals_list as an argument and as a return
+    return super(ClassName, self).create(vals_list)               # return super().create() for creating
 ```
 
 ###### 5. @api.deponds_context
@@ -323,7 +335,7 @@ method to be executed during unlink()
 
 
 
-### sql constraints
+### 8.Models: sql constraints
 ```py
 class Property(models.Model):   # @api.constrains only apply to new data but `_sql_constraints` apply to all
     _name = "property"           # not recommend
@@ -333,6 +345,21 @@ class Property(models.Model):   # @api.constrains only apply to new data but `_s
         ('check_age', 'check(age > 18)', 'age must be greater than 18'),
     ]
 ```
+
+### 9. Model: Currency field
+```py
+class ModelName(models.Model):
+    _name= 'model.name'
+    price = fields.Monetary(string='price')
+    currency_id = fields.Many2one("res.currency", string='Currency', default=lambda self:self.env.user.company_id.currency_id)
+```
+```xml
+<group>
+    <field name='currency_id' invisible=1 />
+    <field name='price' widget='monetary' />             <!-- see icon of dollar beside each price in form -->
+</group>
+```
+
 
 ### Environment
 ```py
@@ -408,17 +435,101 @@ class Property(models.Model):
 + make sure your file starts at line 1
 + if your menu and submenus have no errors but still you cant see them, maybe there is a problem in your security file 
 + for each model in one module we need to add a line in the csv values
-
++ group is a collection of users who share the same permistions
++ we can find access rights (ids) in: Technical/Access Rights in dashboard
 
 ```csv
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_estate_property,access_estate_property,real_estate_ads.model_estate_property,base.group_user,1,0,0,0
 ```
 
-#### security: user types
+#### 1. security: user types
 1. Internal user  ==> full access to odoo appilicatoin ===> with username:password  [admin:admin] login to odoo
 2. Portal user  ===> access to only relevent document ===> [portal:portal]
 3. Public user ===> just aceess to website and if they buy something they become a portal user
+
+#### 2. security: create a group
+
++ this code creates a fields in `settings/Users and Companies/Users/YOURUSER` and also in `settings/Users and Companies/groups` with name of `Name for group of your model` .
++ this group names are pure with no access. In dashboard you can add lots of access to them.
++ we can use this groups id in security csv file
++ we can use this groups id in xml file as attribute tag: `groups=''` for tags like `<menuItem />` or `<field />`
+
+```xml
+<odoo>                                                                  <!--import this file to data=[] in manifest -->
+    <record id="idModelCategory" model="ir.module.category">                <!-- give this id to ref -->
+        <field name="name" > Name for group of your model </field>           <!-- you can find similar samples in odoo addons code -->
+        <field name="description" > this is a description </field>
+        <field name="sequence"> 50 </field>
+    </record>
+    <record id='group_modelname_user' model="res.groups">             <!-- role one: we can use this id in csv file -->
+        <field name="name">User: Manage own property </field>
+        <field name="category_id" ref="idModelCategory" />
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]" />          <!-- implied_id is for group inheritance -->
+    </record>                                                          <!-- 4='link', 0='create', 1='update', 2='delete', 3='unlink' -->
+    <record id='group_modelname_manager' model="res.groups">        <!-- role two:  -->
+        <field name="name">Manager: Manage all property </field>
+        <field name="category_id" ref="idModelCategory" />
+        <field name="implied_ids" eval="[(4, ref('group_modelname_user'))]" />
+    </record>
+</odoo>
+```
+#### 3. Security: creating a Technical item of security
+this code creates an item in `Technical section` of `settings/Users and Companies/Users/YOURUSER` with name of `Test`.
+
+```xml
+<odoo>                                          
+    <record id="id_for_item" model="res.groups"> 
+        <field name="name" > Test </field>
+        <field name="category_id" ref="base.module_category_hidden" />    <!-- ref is very imp -->
+    </record>
+</odoo>
+```
+
+#### 4.Security: Override Access Rights
++ Access Rights are the same we right in csv file
++ we can find access rights in: Technical/Access Rights in dashboard
+
+```xml
+<odoo>
+    <data>                    
+        <record id='moduleName.access_id_in_csv_file' model="ir.model.access">      <!-- changing the group of Access Right in the csv file -->
+            <field name="group_id" ref="moduleName.GROUPNAME" />                    <!-- we can create a group and use its name  -->
+        </record>
+        <record id="moduleName.access_id_in_csv_file" model="ir.model.access">   <!-- chaneg Access Right for model_id -->
+           <field name="name" > new Access Right </field> 
+           <field name="model_id" ref=''> </field>   <!-- model_id in csv file -->
+           <field name="group_id" ref=''> </field>    <!-- create a new group -->
+           <field name="perm_read" >1</field>      <!-- same permissions in csv file -->
+           <field name="perm_create" >0</field>    <!-- order is imp -->
+           <field name="perm_write" >0</field>    <!-- we can set eval="True" instead of 1 for this tag -->
+           <field name="perm_unlink" >0</field> 
+        </record>
+    </data>
+</odoo>
+```
+
+#### 5. Security: Record Rules
+show speacifc record of table
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="property_rule_for_users" model="ir.rule">
+            <field name="name">Property Rule for Users</field>
+            <field name="model_id" ref="model_estate_property"/>
+            <field name="domain_force">[('salesperson_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('real_estate_ads.group_property_user'))]"/>
+            <field name="perm_read">1</field>
+            <field name="perm_write">1</field>
+            <field name="perm_create">0</field>
+            <field name="perm_unlink">1</field>
+        </record>
+    </data>
+</odoo>
+```
+
 
 ## Views
 + import all the views in `__manifest__.py`
@@ -429,7 +540,16 @@ access_estate_property,access_estate_property,real_estate_ads.model_estate_prope
 + you can find lots of xml samples in own odoo addons source code
 + for every model we need a view, and a security row
 
-
+#### 0. Odoo XML Tags
+```
+<odoo>                       # root element
+<data>                        # optional
+<data noupdate="1">            # only loaded when installing the module ( otherwise reloaded at install and update)
+<record>	                 # Creates/updates database records
+<template>	                 # Defines QWeb templates
+<xpath>	                     # (XML Path Language) is an expression language that enables you to navigate through elements
+<t>                           # transforms static XML into dynamic templates
+```
 
 #### 1. first step
 ```xml
@@ -678,7 +798,7 @@ you can also creates a custome `Group by`
     <field name = "name"> a desired film </field>
     <field name = "res_model"> ModelName </field>
     <field name = "view_mode"> tree,form </field>
-    <field name="arch" type="xml" >       <!-- we can add default_group_by="field_name" to kanban [you can drag to change value] -->
+    <field name="arch" type="xml" >       
         <kanban>                                    <!-- kanban_view -->
             <field name="first_name"  />              <!--these fileds will show inside each card -->
             <field name="age"  />
@@ -705,6 +825,7 @@ you can also creates a custome `Group by`
 </kanban>
 <record id="quickId" model="ir.ui.view">        <!-- create a small form view --> 
     <field name = "name"> a desired film </field>
+    <field name = "priority"> 10 </field>         <!-- when we have two form (1. quick form 2.form-view) we need to add priority (not 1) -->
     <field name = "res_model"> ModelName </field>
     <field name="arch" type="xml" >       <!-- -->
     <form>
@@ -719,6 +840,19 @@ you can also creates a custome `Group by`
 <div class="oe_kanban_global_click">    <!-- use this as a root tag after <t> tag -->
 </div>
 ```
+
+> group_by kanban
+```py
+# <!-- we can add default_group_by="field_name" to <kanban/> tag [you can drag to change value] -->
+class ModelName(models.Model):
+    _name = "modelname"    # usually we use group_by="" for selection field
+    field_name = fields.Selection([('value1', 'value1'), ('value2', 'value2')], default="value1", group_expand="_expand_func")
+    def _expand_func(self, records, domain, order):
+        return [   # for bugfix: when you delete all data in module, the button of new for creating new data will be disabled in kanban
+            key for key, dummy in type(self).state.selection
+        ]
+```
+
 #### 8. pivot view
 ```xml
 <record id="quickId" model="ir.ui.view">        <!-- add "pivot" to root act_window action tag --> 
@@ -851,6 +985,42 @@ kanban.cover: Image with overlay
 kanban.ribbon: Status ribbon
 ```
 
+#### 12. Views: Inheritance
+
+##### views_inheritance: positioning with xpath
+```xml
+<odoo>
+    <data>
+        <record id="id_of_form_extended" model="ir.ui.view">
+            <field name="name">name of model</field>
+            <field name="model">model.name</field>
+            <field name="inherit_id" ref="base.view_users_form"/>          <!-- get id of another view as ref for inheritance-->
+            <field name="arch" type="xml">    <!-- position values: 'after,before,replace,inside'  -->
+                <xpath expr="your_expersion" position="after">   <!-- position means add inner elements where? -->
+                    <page string="name_of_tab">                  <!-- expr means which element ? -->
+                        <field name="property_ids">                   <!-- property_ids is a forien-key -->
+                            <tree create="0" edit="0" delete="0">
+                                <field name="name"/>              <!-- access fields of forien-key -->
+                            </tree>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
+```
+
+##### views_inheritance: positioning with <filed/>
++ not works in all situations, but xpath works in all situations (not recommend)
+
+```xml
+<field name='name' position='after'>          <!-- a field element with a name attribute, matches the first field with the same name -->
+    <field name='first_name' />             <!--  first_name is inside forein-key  -->
+</field>         <!-- if we find name='FIELD_NAME' in inspect element and our forein-key will be eqaul to that(in inspect) -->
+```
+
+
 
 ### Data Files
 ```
@@ -889,6 +1059,706 @@ id2,ahmad,Miri
 ```
 
 
+
+### IR
+The "ir" prefix in Odoo models stands for "Information Repository" or "Infrastructure Records". These are core system models that handle Odoo's internal infrastructure and metadata
+
+1. Action-Related Models
+ir.actions.act_window: Window actions (views)
+
+ir.actions.act_url: URL actions
+
+ir.actions.act_window_close: Close window actions
+
+ir.actions.actions: Base actions model
+
+ir.actions.client: Client actions
+
+ir.actions.report: Report actions
+
+ir.actions.server: Server actions
+
+2. View-Related Models
+ir.ui.view: Views definition
+
+ir.ui.menu: Application menus
+
+ir.ui.view.custom: Customized views
+
+ir.ui.scenario: Onboarding scenarios
+
+3. Model Metadata
+ir.model: Model definitions
+
+ir.model.data: XML ID references
+
+ir.model.fields: Field definitions
+
+ir.model.constraint: Model constraints
+
+ir.model.relation: Model relations (M2M tables)
+
+4. Security Models
+ir.model.access: Access control lists
+
+ir.rule: Record rules
+
+ir.default: Default values
+
+ir.config_parameter: System parameters
+
+5. Translation & Localization
+ir.translation: Translations storage
+
+ir.sequence: Number sequences
+
+ir.cron: Scheduled actions
+
+ir.attachment: Attachments/files
+
+6. UI Components
+ir.actions.act_window.view: Window action views
+
+ir.ui.icon: Icons library
+
+ir.filters: User filters
+
+ir.qweb: QWeb templates
+
+7. System Configuration
+ir.module.module: Installed modules
+
+ir.module.category: Module categories
+
+ir.logging: System logs
+
+ir.mail_server: Mail servers
+
+8. Advanced Technical
+ir.exports: Data export definitions
+
+ir.exports.line: Export field mappings
+
+ir.actions.todo: Wizard todo actions
+
+ir.property: Model properties
+
+### Actions
+we can see all types of actions in setting from dashboard
+
+1. Window Actions (ir.actions.act_window)
+2. URL Actions (ir.actions.act_url)
+3. Server Actions (ir.actions.server)
+4. Report Actions (ir.actions.report)
+5. Client Actions (ir.actions.client)
+6. Scheduled Actions (ir.cron)
+
+#### 1. Client Actions (ir.actions.client)
+
+############ notification: creating an action using exsiting tags
+```xml
+<button class="oe_stat_button" name="myaction" type="object" icon="fa-handskake-o" >          <!-- use custome action -->
+    <field name="offer_count" strign="something" widget="statinfo" />
+</button>
+```
+```py
+class Porpery(models.Model):
+    _name ="property"
+
+    def myaction(self):              # create an action with method of model
+        return {                        # return a dictionary
+            'type': 'ir.action.client',
+            # 'tag': 'reload',                # this tag reloads chrome page
+            # 'tag': 'apps',             # this tag redirects to apps link
+            'tag': 'display_notification',  # this tag is for sending notification
+            'params': {
+                'titile' : _('a text for notification')
+                'type': 'success',          # warning, danger
+                'sticky': False
+            }
+        } 
+```
+############ cretaing a custome widget using js
+```xml
+<record id="myaction_id" model="ir.actions.client">            
+    <!-- we can set this id for action attribute in other tags like <menuitem/> -->
+    <field name = "name"> custome client action </field> 
+    <field name = "tag"> custome_client_tag </field>      <!-- use this name in js -->
+</record>
+```
+> then we need to register this tag
+| static\
+|---src\
+|------js\
+|--------- my_custome_tag.js
+|------xml\
+|--------- my_custome_tag.xml
+
+```js
+odoo.define('moduleName.CustomeAction', function(require){            // define a widget
+    "use strict";
+    var AbstractAction= require("web.AbstractAction");
+    var core = require("web.core");
+    var CustomeAction = AbstractAction.extend({
+        template: "CustomeTemplate",
+        start: function(){
+            console.log("Action")
+        }
+    })
+    core.action.registry.add("custome_client_tag", CustomeAction)
+})
+```
+> create a template xml file
+
+```xml
+<template>      
+    <t t-name="CustomeTemplate">      <!-- use this t-name in  js file -->
+        <div>
+            <h3> my template </h3>
+        </div>
+    </t>
+</template>
+```
+> add in __manifest__ file
+
+```py
+'assets':{
+    'web.assets_backend': [
+        'path/my_custome_tag.js',
+        'path/my_custome_template.xml'
+    ]
+}
+```
+
+
+#### 2. Server Actions (ir.actions.server)
+When you select items of a table you can see server actions like 'Delete' and 'Duplicate' or 'Export'.
+
+```xml
+<record id="myaction_id" model="ir.actions.server">            
+    <!-- we can set this id for action attribute in other tags like <menuitem/> -->
+    <field name = "name"> custome client action </field> 
+    <field name = "model_id" ref="moduleName.model_my_model_with_no_dotnotatin" />
+    <field name = "binding_model_id" ref="moduleName.model_my_model_with_no_dotnotatin" />
+    <field name = "binding_view_types"> list, form </field>         <!-- bind the action in form_view and list --> 
+    <field name = "state"> code </field>      
+    <field name = "code">
+        action = model.my_method()       <!-- "model" is a keyword -->
+    </field>      
+</record>
+```
+
+```py
+class Property(models.Model):     # what do you want if user click on your action?  like delete
+    _name = 'property'           # for exmpale by this action we want to change the value of a column for all records
+
+    def my_method(self):
+        active_ids = self._context.get('active_ids', [])         # id of record of table when you click on a record
+        if active_ids:
+            offer_ids = self.env['modelName'].browse(active_ids)
+            for offer in offer_ids:
+                offer.first_name = "const"
+```
+
+
+#### 3. Scheduled Actions (ir.cron)
+```xml
+<record id="ir_cron_extend_offer_deadline" model="ir.cron">
+    <field name="name">Offers: Extend Deadline Everyday</field>
+    <field name="model_id" ref="real_estate_ads.model_estate_property_offer"/>
+    <field name="state">code</field>
+    <field name="code">model._extend_offer_deadline()</field>     <!-- method of model in py -->
+    <field name="interval_number">1</field>                      <!-- freequnecy -->
+    <field name="interval_type">days</field>
+    <field name="numbercall">-1</field>
+    <field name="active" eval='False'/>    <!-- flase means do it manualy, not automatically-->
+    <field name="doall" eval='True' />     <!-- doall means if server was off or restarted do this cronjob again -->
+</record>
+```
+
+```py
+class Property(models.Model):        # we can run this cronjob manually in dashboard from Scheduled Actions
+    _name = 'property'
+    def _extend_offer_deadline(self):
+        offer_ids = self.env['estate.property.offer'].search([])
+        for offer in offer_ids:
+            offer.validity = offer.validity + 1             # change a filed of model daily
+```
+
+#### 4. URL Actions (ir.actions.act_url)
+
+```xml
+<button class="oe_stat_button" name="action_url_method" type="object" icon="fa-handskake-o" >          <!-- open a link with button -->
+    <field name="offer_count" strign="something" widget="statinfo" />
+</button>
+```
+
+```py
+class Property(models.Model):           
+    _name = "property"
+    def action_url_method(self):                  # name of button
+        return {
+            'type' : 'ir.actions.act_url',
+            'url' : 'https://odoo.com',
+            'target' : 'new',                     # open in new tab
+            'target' : 'self',                     # open in the same tab
+        }
+```
+
+#### 4. Report Actions (ir.actions.report)
+|module\
+| reports\
+|--- property_report.xml
+|--- reposrt_template.xml
+```xml
+<odoo>          <!-- import in data=[] in __manifest__ -->
+    <data>       <!-- add a print icon to dashboard -->
+        <record id="property_report_action" model="ir.actions.report">      <!-- we can use <report/> tag -->
+            <field name="name">Property Report Action</field>
+            <field name="model">modelName</field>
+            <field name="report_type">qweb-pdf</field>         <!-- or qweb-html -->
+            <field name="report_name">moduleName.my_template_id</field>    <!-- external id -->
+            <field name="report_file">moduleName.my_template_id</field>
+            <field name="print_report_name">(object._get_report_base_filename())</field>      <!-- instead of hard code, this get name of current report>
+            <field name="attachment">((object.name)+'.pdf')</field>                  <!-- instead of hard code,take the name of propery -->
+            <field name="binding_model_id" ref="moduleName.model_id_csv"/>
+            <field name="binding_type">report</field>       <!-- means action will appear in the Print contextual menu -->
+            <field name="groups_id" eval="[(4, ref('moduleName.id_of_group'))]"/> <!-- only this group access -->
+        </record>
+    </data>
+</odoo>
+```
+
+```py
+class ModelName(models.Model):             # get the name of model
+    _name = 'model.name'
+    def _get_report_base_filename(self):    # use this method for xml
+        return 'My report name: %s' % self.name
+```
+> report_template.xml
+
+```xml
+<odoo>
+    <data>
+        <template id="my_template_id">                    <!-- use this template in report action -->
+            <t t-call="web.html_container">                <!--t-call is for reference to anotehr templaet -->
+                <t t-foreach='docs' t-as="o">                <!-- specifiy "o" for accessing current object -->
+                    <t t-call='moduleName.anotherTemplate' />
+                </t>
+            </t>
+        </template>
+        <template id="anotherTemplate"> 
+            <t t-call="web.external_layout"> 
+                <div class="document">         <!-- this class comes from bootstrap -->
+                    <h2 t-field="o.first_name"/>     <!-- we said we want to access Current item with "o" -->
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>
+```
+
+### Translation
+|moduleName\
+|---i18n\
+|------fa.po
+
+1. first export out what is available in our code --> `setting/translation/export`
+2. set `empty translation template`
+3. put that file in `i18n/fa.po`
+4. from `profile/preferences/` change the language to `fa`
+
+
+### Mixins
+Mixins are abstract models that have useful and often-used features that can mix with other models.
+
+
+##### 1. mixin: mail
+```py
+class ModelName(models.Model):           # this mixins come from a model: mail.message
+    _name ="model.name"
+    _inherit = ['mail.thread']      # add "mail" in "deponds":[] in __manifest__
+    _inherit = ['mail.activity.mixin']         # we can set planned activities like phone call, meeting in this
+    price = fields.Float(string="price", tracking=True)     # tracking means if user change price we can see in chatter
+```
+
+```xml
+<div class='oe_chatter'>         <!-- add this after <sheet/> tag in form-view -->
+    <field name="message_follower_ids" widget="followers" />         <!-- for every new record we can chat -->
+    <field name="message_ids" widget="mail_thread" />
+    <field name='activity_ids' widget="mail_activity" />           <!-- this is for activity.mixin -->
+</div>
+```
+##### 2. mixin: utm
+```py
+class ModelName(models.Model):   # whenever visit our website we can track him through coockies
+    _name ="model.name"
+    _inherit = ['utm.mixin']      # add "utm" in "deponds":[] in __manifest__
+```
+```xml
+<group>           <!-- put this in form-view -->
+    <field name="campain_id" />    <!-- many2one filed that have relationship with utm.campaign model -->
+    <field name="source_id" />    <!-- many2one field that have relationship with utm.source model -->
+    <field name="medium_id" />    <!-- many2one field that have relationship with utm.medium model -->
+</group>
+```
+##### 3. mixin: website
+```py
+class ModelName(models.Model):  #  add a website visibility toggle on any of your record
+    _name ="model.name"
+    _inherit = ['website.mixin']      # add "website" in "deponds":[] in __manifest__
+
+    def _compute_website_url(self):        # method for oweriding the website_url
+        for rec in self:                     # use website_url in xml
+            rec.website_url = "/mypath/%s" % (rec.id)
+```
+```xml
+<button name="website_publish_button" type="object" icon="fa-globe" />   <!-- publish button for website in dashboard -->
+    <field name="website_published" widget="website_button" />
+</button>
+<group>
+    <field name="website_url" />           <!-- see website_url in form-view -->
+</group>
+```
+###### 4. mixin: seo
+```py
+class ModelName(models.Model):
+    _name ="model.name"                   # usefull for seo optimization
+    _inherit = ['seo.mixin.metadata']      # add "seo" in "deponds":[] in __manifest__
+```
+
+### Mailing
+we have diferenet models for mailing:
+1. messages in the chatter comes from model: "mail.message". in `settting/Technical/Messages` which represent any message send or recive.
+2. mail.mail in `setting/Technical/Emails` which inherits "mail.message" and its only for sending emails
+3. with `outgoing email Servers` we can send messages out of odoo.
+4. with `incoming email Servers` we can recieve from external serviecs
+
+```py
+class ModelName(models.Model):             # create an action for button of sending email
+    _name ="model.name"                   # with "outgoing email server" we can send emails 
+    def action_send_email(self):
+        template = self.env.ref('moduleName.id_mail_template')
+        template.send_mail(self.id, force_send=True)
+# <button name='action_send_email' type='object' string='send email' calss='btn btn-primary' />
+# use this button in form-view for sending email
+```
+
+```xml
+<odoo>                  <!-- create a template for emails -->
+    <data>
+        <record id="id_mail_template" model="mail.template">             <!-- use this id in model ref -->
+            <field name="name">Property Information</field>
+            <field name="email_from">test@qa.team</field>                         <!-- static email -->
+            <field name="email_from">{{object.user_email}}</field>                <!-- email of object -->
+            <field name="email_to">{{object._get_emails()}}</field>               <!-- method that provide all emails -->
+            <field name="model_id" ref="moduleName.model_id_with_no_dotnotation"/>    <!-- model_id in csv -->
+            <field name="auto_delete" eval="True"/>          <!-- delete email after sending-->
+            <field name="subject">New Information on {{object.name}}</field>     <!-- subject of email -->
+            <field name="body_html" type="html">
+                <p>
+                    Dear Bidders,
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>
+```
+
+### XML-RPC
++  XML-RPC is a Remote Procedure Call method that uses XML passed via HTTP(S) as a transport
++ we can read and manipulate data( in odoo) using XML-RPC package (py,java,nodejs) outside odoo framework.
+
+```py
+import xmlrpc.client                # python by default has a lib
+url = 'http://localhost:8869'         # server ip
+username = 'username'              #  user in odoo
+password = 'password'            # we can connect with 'API KEY' or 'password'
+db = 'db_name'                   # db of odoo
+
+common_url = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')     # odoo use /xmplrpc/2/common for connecting
+print(common_url.version())                                       # with common_url we can find version of odoo
+user_uid = common_url.authenticate(db, username, password, {})     # common_url is for authenticating 
+# user_id is an integer [ we can see this id in dashboard]
+
+models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')     # url for calling methods
+# formula: 'db','uid', 'password' , 'modelName', 'method_name', [list of parameters passing to server], {list of fields returns from server}
+# -------------------------------------------------------
+# search function   --->search returns just ids of records
+property_ids = models.execute_kw(db, user_uid, password, 'estate.property', 'search', [[]])    # empty array means search all
+property_ids = models.execute_kw(db, user_uid, password, 'estate.property', 'search', [[]], {'offset': 0, 'limit': 10'})    # offset means jump
+
+# count function
+count_property_ids = models.execute_kw(db, user_uid, password, 'estate.property', 'search_count', [[]])
+
+# read function   ----> return the whole object of records
+read_property_ids = models.execute_kw(db, user_uid, password, 'estate.property', 'read', [property_ids])  # pass ids
+
+# search and read function (same as above) --> recommend
+search_read_property_ids = models.execute_kw(db, user_uid, password, 'estate.property', 'search_read', [[]], {'fields': ['name']})   # just show name field in each record
+# create function (create new record)
+create_property_id = models.execute_kw(db, user_uid, password, 'estate.property', 'create', [{'name': 'Property from RPC', 'sales_id': 6}])
+
+# update function
+write_property_id = models.execute_kw(db, user_uid, password, 'estate.property', 'write', [[8], {'name': 'Property from RPC Updated 2'}])  # return true
+read_name_get = models.execute_kw(db, user_uid, password, 'estate.property', 'name_get', [[8]])
+
+# unlink function
+unlink_property_id = models.execute_kw(db, user_uid, password, 'estate.property', 'unlink', [[8]])
+```
+### Json-RPC
+
+```py
+import json
+import random
+import urllib.request            # python by default has a lib for json-rpc
+odoo_url = 'http://localhost:8869'
+username = 'username'
+password = 'password'
+db = 'db_name'
+
+def json_rpc(url, method, params):
+    data = {
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": random.randint(0, 1000000000)
+    }
+    headers = {
+        "Content-Type": "application/json"
+    }
+    req = urllib.request.Request(url=url, data=json.dumps(data).encode(), headers=headers)  # url, data, headers
+    response = json.loads(urllib.request.urlopen(req).read().decode("UTF-8"))
+    if response.get('error'):
+        raise Exception(response["error"])
+    return response["result"]
+
+
+def call(url, service, method, *args):
+    return json_rpc(f"{url}/jsonrpc", "call", {"service": service, "method": method, "args": args})
+#localhost:8869/jsonrpc
+
+user_id = call(odoo_url, "common", "login", db, username, password)    # *args= [db, username, password]
+print(user_id)    # user_id is an integer which we can see in dashboard like 2
+
+vals = {
+    "name": "Property from JSON",
+    "sales_id": 6
+}
+# all the methods in XML-RPC are the same with JSON-RPC
+create_property = call(odoo_url, "object", "execute", db, user_id, password, 'estate.property', 'create', vals)
+print(create_property)
+
+read_property = call(odoo_url, "object", "execute", db, user_id, password, 'estate.property', 'read', [9])
+print(read_property)
+```
+
+### Odoo-RPC
+
+```py
+
+```
+
+### Web Controller
+```
+|controller \
+|--- main.py                    # import main.py into __init__
+|--- __inti__.py               # import this file into root __init__
+```
+
+```py
+from odoo import http
+from odoo.http import request
+class PropertyController(http.Controller):
+    # auth="public" ,'user','none'             # type of req: http, json   # methods=['GET'], csrf=False, cors="*"
+    @http.route(['/myurl'], type='http', website=True, auth="public")   # create a route: http://localhost:8069/properties
+    def show_properties(self):
+        model_ids = request.env['modelName'].sudo().search([])                   # by search we can get ids of all records
+        return request.render("moduleName.id_template", {"model_ids": model_ids})   # render template with this dictionary
+```
+
+```xml
+<odoo>                                               <!-- template for url: /myurl -->
+    <template id="id_template" name="name_for_myurl">   <!-- t-call is for report templates and websites -->
+        <t t-call="website.layout" t-cache="true">                    <!-- use this template in website layout -->
+            <div class="oe_structure">                   <!-- html tags -->
+                <div class="container">                  <!-- t-cache means cache in browser -->
+                    <h3>My Table</h3>
+                </div>
+            </div>
+                <table class="table-striped table">
+                    <thead>
+                        <tr>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="model_ids" t-as="obj">       <!-- for loop -->
+                            <tr>
+                                <th><span t-esc="obj.first_name"/></th>
+                                <th><span t-esc="obj.last_name"/></th>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+        </t>
+    </template>
+</odoo>
+```
+
+### Qweb
+```xml
+<!----------------------------------------- 1. if -------------------------->
+
+<t t-if="condition">
+    <!-- Bcz we used <t> tag as a parnet we should its mandatory to use html tags in this body -->
+    <div> something </div>             <!-- acceptable --->
+    a text without html tag             <!-- not acceptable -->
+</t>
+
+<div t-elif="other_condition">
+    a text <!-- Alternative condition with no html tag in the body -->
+</div>
+
+<t t-else="">
+    <!-- Default content -->
+</t>
+
+<!-------------------------------------------- 2. loop ----------------------->
+
+<t t-foreach="records" t-as="record">
+    <p t-esc="record.name"/>
+    
+    <!-- Available loop variables -->
+    <span t-esc="record_index"/>      <!-- 0-based index -->
+    <span t-esc="record_size"/>       <!-- Total items -->
+    <span t-esc="record_first"/>      <!-- True for first item -->
+    <span t-esc="record_last"/>       <!-- True for last item -->
+    <span t-esc="record_parity"/>     <!-- "even" or "odd" -->
+</t>
+
+<!------------------------------------ 3. variable assienment ------------------------------>
+
+<t t-set="variable_name" t-value="expression"/>
+<t t-set="today" t-value="datetime.date.today()"/>
+
+<!------------------------ 3. Output Escaping ----------------------------------------->
+
+<p t-esc="user_input"/>            <!-- Safe -->
+<div t-raw="trusted_html"/>          <!-- Potentially unsafe -->
+
+<!-------------------------- 4. ternary operator ------------------------------------->
+
+<div t-attf-class="container #{error ? 'bg-danger' : ''}">
+    <!-- Generates class="container bg-danger" when error is true -->
+</div>
+
+<!--------------------------- 5. log a variable ------------------------------------------>
+
+<t t-log="variable_name"/>
+
+<!--------------------------------- 6. debug ------------------------------------------------------->
+
+<t t-debug="">
+    <!-- Breaks execution to debug template -->
+</t>
+```
+
+### CSS
+
+###### 1. Inline css
+```xml
+<div style="color: red; font-size: 16px;">
+    This text will be red and 16px
+</div>
+```
+###### 2. Style Tag
+```xml
+<template>
+    <style>
+        .report-title {
+            color: aqua;
+        }
+    </style>
+    <div> a text </div>
+</template>
+```
+
+###### 3. Internal Link
+```xml
+<template>
+    <link rel='stylesheet' href='modelName/static/src/css/style.css' />
+    <div class='myclass' id='myid'> a text </div>
+</template>
+```
+###### 4. using bundlers
+with bundlers there is no need for using `<link rel="" />` tag, just use `<t t-call="website.layout">` as a parent element for `web controllers tempaltes`
+
+
+###### 5. SCSS
++ with bundlers there is no need for using `<link rel="" />` tag, just use `<t t-call="website.layout">` as a parent element for `web controllers tempaltes`
++ make sure you installed 'sass'
+
+### Bundles (Assests)
+Odoo assets are grouped by bundles. Bundles are file path which we put a collection of assets into specfic folders. These file paths should introduce to `__manifest__` with `assets={}`
+
+```
+frontend           # website
+```
+
+### Javascript
+
+###### 0. inline js
+
+```xml
+<template>
+    <script> console.log("some thing") </script>
+</template>
+```
+
+###### 1. Plain js
+
+
+
+
+###### 2. Native js module
+
+###### 3. Odoo js module
+```js
+// there is no need for importing anything in js file
+// there is no need for use <script src=''/> tag in the views, this script will run in every page
+odoo.define('specificName',function(require){            // odoo.define('name', ()=>{})
+   "use strict"                 //
+    
+})
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Tools
+https://github.com/Yenthe666/InstallScript
+https://github.com/vertelab/odootools
 
 
 

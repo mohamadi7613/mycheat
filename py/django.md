@@ -11,6 +11,7 @@ python -m venv myname     # create a virtual env (a folder which contains inner 
 source myname/bin/activate     # activate virtual env in linux
 myname/bin/activate            # activate virtual env in windows
 pip freeze                  # see list of installed packages in virtual env
+python -m pip freeze      # if pip not works
 pip freeze > requirement.txt          # create requirement.txt for sharing this proj with someone else
 ```
 
