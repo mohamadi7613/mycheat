@@ -1466,6 +1466,7 @@ class ModelName(models.Model):             # create an action for button of send
 ```
 
 ### XML-RPC
++ RPC (Remote Procedure Call) for client-server communication.
 +  XML-RPC is a Remote Procedure Call method that uses XML passed via HTTP(S) as a transport
 + we can read and manipulate data( in odoo) using XML-RPC package (py,java,nodejs) outside odoo framework.
 
@@ -1717,36 +1718,153 @@ frontend           # website
 </template>
 ```
 
-###### 1. Plain js
+###### 1. Plain js(es5)
+use bundles to run js in odoo
+if you want to use external libraries like "axios" or dom manipulation, use plain js
+plain javascript files do not offer the benefits of a module system
 
+```js
+(function () {              // use self invoking function to prevent from hoisting
+  let a = 1;               // avoid leaking local variables to the global scope.
+  console.log(a);
+})();
+```
+###### 2. Native js module (es6 modules)
++ by default Odoo transpiles files under /static/src and /static/tests into Odoo modules. (In other folders, files aren’t transpiled by default)
++ for ES6 modules you should write `/** @odoo-module **/` at the first line of your code.
++ odoo has some limitation of useing native es6 modules. (check docs: "limitation")
 
-
-
-###### 2. Native js module
+```js
+/** @odoo-module **/                              
+import {something} from `./file_a`               // we can use es6 syntax
+import {something} from `@module_name/file_a`  // for other moduels use fullname path
+// we can use /** @odoo-module alias=moduleName.someName**/  for maping names if you want to use Native modules into odoo js modules
+```
 
 ###### 3. Odoo js module
++ Odoo module: Odoo has defined a small module system located in the file addons/web/static/src/js/boot.js
 ```js
-// there is no need for importing anything in js file
+// there is no need for importing anything in js file to access odoo.define()
 // there is no need for use <script src=''/> tag in the views, this script will run in every page
-odoo.define('specificName',function(require){            // odoo.define('name', ()=>{})
-   "use strict"                 //
-    
+odoo.define('ModuleName.specificName',['moduleName.B'],function(require){            // odoo.define('name', ()=>{})
+   "use strict"                 //  second argument is dependencies array
+    var A = require('moduleName.A');      // specificName is a  service
 })
 ```
 
 
+### OWL
++ OWL(Odoo Web Library) is a component framework inspired by react (class based components with hooks).
++ OWL introduced in Odoo 13+ to replace the legacy Widget system (based on jQuery).
++ Doc: https://github.com/odoo/owl/blob/master/doc/readme.md
++ Discuss module in odoo adons use OWL
++ OWL has predefined components and we can use it in our project like: `ColorList`, `CheckBox`, `DropDown` and so on.
+
+##### 0. owl structure
+
+```
+| moduleName\
+|--- static\
+|------ src\                      # load files in __manifest__ xp: 'web.assets_frontend'
+|--------- main.js                # load main.js file at the end in __manifest__
+|--------- components\              # import all xml files together, then js files together
+|------------ component.xml        # load xml file first bcz in js file we use xml file
+|------------ component.js
+|------------ component.css
+```
+1. step1= component
+
+```js
+/** @odoo-module **/
+import { Component, xml, useState,useRef,useEffect } from "@odoo/owl";
+export class MyComponent extends Component {   // class component    // at the top of template <t t-name="myaddon.MyComponent"> 
+    static template = 'myaddon.MyComponent';   // id of xml template    
+    setup() {                                             //  initialize component here
+        this.state = useState({ value: 'Hello' });           // <div t-esc="state.value" />
+    }
+    onButtonClick() {                                 // like event handler
+        this.state.value = 'World';  // <button t-on-click="onButtonClick">Click Me</button>
+    }
+}
+```
+2. step2 = template of the class component
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>     <!-- do not use <odoo> tag for owl templates --> 
+<templates xml:space="preserve">          <!-- xml:space="preserve" for preserve white space(tabs, new lines) -->
+<t t-name="myaddon.MyComponent" owl='1'>       <!-- name of class component --> 
+    <button t-on-click="onButtonClick">Click Me</button>
+    <div>
+        <t t-esc="state.value"/>
+    </div>
+</t>
+</templates>
+```
+3. step3 = mount your root component
+
+```js
+/** @odoo-module **/        // without this line you get this error: // The message port closed before a response was received.
+import { mount, whenReady } from "@odoo/owl";
+import { Navbar } from "../navbar/navbar";  //relative path is ok
+import { templates } from "@web/core/assets";      // you do not neet to import anything in view template
+
+owl.whenReady( () => {    // app is an id of an element in the view tempalate
+  mount(Navbar, document.getElementById("app"), { templates, dev: false });  // alternative: document.body
+});
+```
+
+###### 1. OWL: Lifecycle Hooks
 
 
+```js
+export class OwlTodoList extends Component {
+    setup() {      // 1. `setup()`       ----->	Runs once when the component initializes
+        this.state = useState({ data: null });
+    }
+    async willStart() {   // 2. `willStart()`	 ----->Async setup before rendering (e.g., fetch data)
+        this.state.data = await this.fetchData();
+    }
+    mounted() {    //3. `mounted()`	----->Runs after the component is inserted into DOM
+        console.log("Component is in the DOM!");
+    }
+    willUnmount() {  // 4. `willUnmount()`	-----> Runs before removal (cleanup event listeners)
+        console.log("Component is being removed");
+    }
+}
+```
+##### 2. OWL: UseEffect
+```js
+setup() {
+    this.state = useState({ value: 1,text:"def"});
+    useEffect(
+        () => {console.log("log");},
+        () => [this.state]
+    );
+}
+```
+##### 3. OWL: Events
+```js
+export class Body extends Component{
+    static template = 'real_state_ads.Body';
+    _updateInputValue(event) {
+        // <input t-on-input="_updateInputValue" />
+        this.state.text = event.target.value;
+    }
+    increment(){  
+        // <button t-on-click="increment">
+      this.state.value= this.state.value+1;
+    }
+}
+```
 
 
+### Registery
++ Registries are (ordered) key/value maps
 
 
-
-
-
-
-
-
+### widgets
+https://www.cybrosys.com/blog/widgets-list-in-odoo-14
+https://www.cybrosys.com/odoo/odoo-books/odoo-17-development/views/widgets/
 
 
 
