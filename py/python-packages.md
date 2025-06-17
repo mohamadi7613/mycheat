@@ -12,6 +12,6 @@ server.serve_forever()
 ############################  client.py
 import xmlrpc.client
 proxy =xmlrpc.client.ServerProxy("http://localhost:6789")
-a = proxy.add(45,20)
+a = proxy.add(45,20)              # add is a method in the server
 print(a)    # 65
 ```

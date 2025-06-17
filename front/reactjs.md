@@ -13,9 +13,9 @@ npm install --save prop-types  // runtime type checking for React props and simi
 // notes: don't forget the command lines
 
 
+# 0. Conecpts
 
-
-# File structure
+## File structure
 src/
 |-- api/                         # Axios configuration and API utility
 |   |-- axiosClient.js           # Axios instance with default settings
@@ -48,7 +48,7 @@ src/
 
 
 
-# virtual dom
+## virtual dom
 The Virtual DOM is a lightweight JavaScript object that mirrors the structure of the real DOM.
 Instead of manipulating the actual DOM directly, React creates a virtual representation of it in memory.
 When the state or props of a React component change, React updates the Virtual DOM first. After finding the differences, React updates only the parts of the real DOM that changed.
@@ -70,27 +70,29 @@ reactRoot.render (<App/>)   //pass first component
 // render can not render [obj, bool, null, undefined] but can render [jsx, number, array, fragment]
 ```
 
-### env 
+## env 
 . it is a text file for storing personal info like keys
 . we should use `REACT_APP` as a prefix for any keys
 . we can access it in our js file by `process.env.REACT_APP_xxx`
 . any update in .env file requires restart whole app
 . Vercel for deploying our app have a feature to fill our .env file, so there is no need to push to github
 
-### Strict mode 
+## Strict mode 
 . run useEffect twice instead of once, you can check it with and empty array
 . its only available in developing mode and it will ignore in production mode 
 . it give some warnings and additional checks
 . you should add rules about .env file in Readme file
 
 
-## conditional rendering
+# 2. Syntax
+
+## 2. syntax: conditional rendering
 ```js
 { isGoal ? <MadeGoal/> : <MissedGoal/> }   //Ternary Operator
 {cars.length > 0 && <h2>a text</h2> }      // &&
 // useful for sending props
 ```
-###  jsx
+##  2. syntax:jsx
 
 ```js
 const submitButton = (  // we can save jsx into a variable, make it easy to read
@@ -100,7 +102,7 @@ const submitButton = (  // we can save jsx into a variable, make it easy to read
 )
 ```
 
-## Props
+## 2. syntax:Props
 
 ```js
 <Person name="ali" age=45 />                // sends date to Person with props
@@ -111,20 +113,20 @@ const submitButton = (  // we can save jsx into a variable, make it easy to read
 // listeners like onClick do not applt on custom components [they send with props]
 ```
 
-## States
+## 2. syntax:States
 + Every time state or props changes, the function of component will re-render(runs again)
 + setState in an async function so you can not see the updated value with console.log immediatly after that. but you can see updated value using console.log in the body of function (bcz re-rendering).
 ```js
 const [id, setId] =useState(12)   // its better to use const, so "a = 13" will get error
 ```
 
-## CSS
+## 2. syntax:CSS
 ```js
 <div style={{backgroundColor: "red"}}> </div>   // we should use obj but in html we use string
 <div className={style.header + " " + style.center}> ok </div>          // for preventing conflict between css classes we use css modules (style.module.css) 
 ```
 
-## Loops
+## 2. syntax:Loops
 ```js
 <div> ["this","is"] </div>    // react can display arrays ==> thisis
 <div> [<p> p tag </p>, <h1 key="k"> h1 tag </h1>] </div> //  we get a warning that every element should have a key
@@ -132,7 +134,7 @@ const [id, setId] =useState(12)   // its better to use const, so "a = 13" will g
 [1,2,3].map(item,index)=>{return(<div>{item}</div>)}
 ```
 
-### Form
+### 2. syntax:Form
 ```js
 function submit(e) {       // onSubmit handler for <form> tag
       e.preventDefault()   // prevent from refresh
@@ -143,7 +145,7 @@ function submit(e) {       // onSubmit handler for <form> tag
 }
 ```
 
-### Fetch
+### 2. syntax:Fetch
 ```js
 const BASE_URL = "www.google.com" //config.js
 const API_KEY_PARAM = "?api_key=123"
@@ -158,8 +160,9 @@ useEffect(()=>{
 },[]) // empty array is good for fetching data before render
 ```
 
+# 3. Hooks
 
-### useEffect
+### 3. Hooks: useEffect
 ```js
 // why we need? bcz if we save the result of axios in setSate it will re-render [infinit loop]  
 // useEffect is a listener when compoent starts and remove
@@ -181,8 +184,18 @@ function Effect() {
 }
 ```
 
+### 3. Hooks:State batching
+State batching introduced in React18 and it is an optimization where multiple state updates are grouped together into a single render, improving performance by reducing the number of renders triggered.
+```js
+const async handleClick = () => {
+  await axios.get("url.json")  // before react18 we saw multiple "hi" in the console
+  setCount(count + 1); 
+  setFlag(!flag);      // but in react 18 all these updates will be batched
+  console.log("Hi");  
+};
+```
 
-### useRef
+###  3. Hooks: useRef
 + provides a way to persist values across renders without causing re-rendering of the component.
 + It returns a mutable object with just one property `current`
 + useRef is great for accessing DOM elements 
@@ -204,7 +217,7 @@ const MyComponent = () => {
 };
 ```
 
-### useMemo
+###  3. Hooks: useMemo
 + cache the result of a calculation between re-renders
 ```js
 const memoizedValue = useMemo(() => computeExpensiveValue(a, b), [a, b]); // this code runs the function
@@ -215,7 +228,7 @@ export const App = memo(App_)
 export const App = memo(()=>{return <div>send</div>}) // anotehr appraoch
 ```
 
-### useCallback
+### 3. Hooks: useCallback
 useCallback is a React Hook that lets you cache a function definition between re-renders.
 ```js
 function App(){
@@ -231,18 +244,8 @@ function App(){
 }
 ```
 
-### State batching
-State batching introduced in React18 and it is an optimization where multiple state updates are grouped together into a single render, improving performance by reducing the number of renders triggered.
-```js
-const async handleClick = () => {
-  await axios.get("url.json")  // before react18 we see multiple "hi" in the console
-  setCount(count + 1); 
-  setFlag(!flag);      // but in react 18 all these updates will be batched
-  console.log("Hi");  
-};
-```
 
-### useReducer
+###  3. Hooks: useReducer
 alternative to useState for managing more complex state logic
 ```js
 export default function Counter() {
@@ -257,36 +260,7 @@ export default function Counter() {
 ```
 
 
-### CSS not px
-
-## React-Router
-
-```js
-
-```
-
-## React-styled component
-1. just critical css
-2. no class name bug
-3. easier deletaion (when delete c component in react)
-4. Dynamic styling
-
-File structure
-1. /Components
-1.1 Button.js   [import and export in this file]
-1.2 Button.style.js
-1.3 App.js    [import from Button.js]
-
-```js
-import styled from 'styled-components'
-export const styledComponent1 = styled.button`color: red;` 
-export const styledComponent2 = styled(styledComponent1)`border-color: red;`  //extends inheritance
-function App(){
-  return(<div><styledComponent> your button </styledComponent></div>)
-}
-```
-
-## Context
+##  3. Hooks: Context
 
 ```js
 ////context.js
@@ -320,7 +294,7 @@ export function Component(){ // second method is by using useContext
 }
 ```
 
-## Custome Hooks
+## 3. Hooks: Custome Hooks
 + Generally hooks are related to re-render the component.
 + Hooks are just simple regular functions which get regular arguments(not props)
 + For x, we can not pass useEffect to a component but we can create a custome hook for this
@@ -354,7 +328,37 @@ function withAuthRequired(component){ // by convention starts with "with"
 }
 ```
 
-### React query
+# 4. React Lib:
+
+## 4. React Lib:React-Router
+
+```js
+
+```
+
+## 4. React Lib:React-styled component
+1. just critical css
+2. no class name bug
+3. easier deletaion (when delete c component in react)
+4. Dynamic styling
+
+File structure
+1. /Components
+1.1 Button.js   [import and export in this file]
+1.2 Button.style.js
+1.3 App.js    [import from Button.js]
+
+```js
+import styled from 'styled-components'
+export const styledComponent1 = styled.button`color: red;` 
+export const styledComponent2 = styled(styledComponent1)`border-color: red;`  //extends inheritance
+function App(){
+  return(<div><styledComponent> your button </styledComponent></div>)
+}
+```
+
+
+### 4. React Lib:React query
 + Caching: Memoizing and show data on the screne and you do not see the loading then send a request to the API then make comparsion and if there was a difference rerender the page
 + multiple requests (if req fail)
 ```js
@@ -383,5 +387,7 @@ function Example() {
   )
 }
 ```
+
+# 5. class components
 
 

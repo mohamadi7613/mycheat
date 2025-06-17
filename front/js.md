@@ -4,23 +4,6 @@
 # javascript cheat sheet
 
 
-https://www.javascriptcheatsheet.org/
-https://quickref.me/javascript.html
-
-img:
-https://github.com/Pradeep-Pandey13/CheatSheets-HTML-CSS-JavaScript
-
-https://github.com/logeshpaul/Frontend-Cheat-Sheets?tab=readme-ov-file
-
-
-
---------------
-https://github.com/mbeaudru/modern-js-cheatsheet   // es6
-https://github.com/krishnr/JavaScript-cheat-sheet // es5 and es6
-https://github.com/lifeparticle/JS-Cheatsheet    // topic to chatgpt
-https://github.com/xremix/JS-Cheatsheet   // source es6
-https://github.com/bobleesj/javascript-cheatsheet  // opp
-
 ### Variable
 + A `statement` performs an action and typically end with a semi-colon, like if statement and declaration statement.
 + An `expression` is a piece of code that evaluates to a value with operations and returns a value like let x = a + 5;
