@@ -6,54 +6,103 @@
 sudo ufw allow ssh
 sudo ufw enable
 sudo ufw status
-sudo apt install openssh-server               # this should be installed in server
+sudo apt install openssh-server               # this should be installed on target server
 sudo systemctl status ssh
 ```
 
+### fingerprint
++ An `SSH fingerprint` is a short, unique hash of a server’s public SSH key.
++ When you connect to an SSH server for the first time, your client gets the server’s public key.
++ SSH stores its public key fingerprint in a file called: `~/.ssh/known_hosts`
++ The fingerprint helps verify that you’re connecting to the correct server, not to an attacker
++ after this command we get `ssh fingerprint error`.
++ two solutions: 1. ssh to this ip before ansible comamnd (recommend) 2. "vi /etc/ansible/ansible.cfg" and set'host_key_checking' to False
+
+```bash
+```
+## Install Ansible
+
+```bash
+# pipx is for installing Python CLI applications, its not for libraries and frameworks
+pipx install --include-deps ansible                  # install full package
+pipx install ansible-core                            # install minimal version
+```
+
 ## Invenroty
++ Inventory file defines the hosts and groups of hosts that your playbooks or ad-hoc commands will manage
 + we can write "dynamic inventory file" --> `inventory.py` or "static inventory" ---> `inventory.txt`
++ default format for inventory file is `INI` but it also supprts yaml and txt.
++ default location: `/etc/ansible/hosts` but we can specify out file with -i flag in commands
 
 
 ```bash
+# syntax for .txt or .ini       # syntax for yaml file is diff
 [db]                           # we can group servers by this syntax [group_name]
-server1.company.com
-server2.company.com
+server1.company.com            # we can write just hostname with no parameters
+server2.company.com            # or we can specify an alias for the hostname
 
 [server]
-target1  absible_host=server2.company.com               # target1 is an alias for host_name
-web2 absible_host=192.168.0.109                        # ansible_host is called a "parameter" or a variable
+target1 absible_host=server2.company.com               # target1 is an alias for host_name
+target2 absible_host=192.168.0.109                        # ansible_host is called a "parameter" or a variable
 # parameters like ansible_port, ansible_connection, asnible_user, ansible_ssh_pass
-web  absible_host=server2.company.com ansible_connection=ssh               # how connect to the server like: winrm to windows_server
-localhost ansible_connection=localhost                            # we can also set connection to localhost
-web  absible_host=server2.company.com ansible_port=2222         # defult port is 22 but we can change it
-web  absible_host=server2.company.com ansible_user=admin         # default user is root
-web  absible_host=server2.company.com ansible_ssh_pass=123         # dont use this option, its not secure
+target3  absible_host=192.168.0.109 ansible_connection=ssh    # how connect to the server like: winrm to windows_server
+target3  absible_host=192.168.0.109 ansible_port=2222         # defult port is 22 but we can change it
+target3  absible_host=192.168.0.109 ansible_user=admin         # default user is root
+target3  absible_host=192.168.0.109 ansible_ssh_pass=123         # dont use this option, its not secure
+mylocal ansible_connection=localhost                            # we can also set connection to localhost
 ```
 
 
 
 ## ad-hoc commands
++ An-hoc commands are one-line commands used to perform quick tasks on remote hosts without writing a playbook
 
 ```bash
 cat /etc/ansible/hosts              # defautl location for inventory file we can change it with -i flag in ad-hoc commadns
-ansible target1 -m ping -i inventory.txt                  # -m = module -i = inventory target1 is host_name # check the connection
-# after this command we get `ssh fingerprint error`.
-# An SSH fingerprint is an unique hash that when you connect(ssh) to a server for the first time SSH stores its public key fingerprint in a file called: `~/.ssh/known_hosts`
-# two solutions: 1. ssh to this ip before ansible comamnd (recommend) 2. "vi /etc/ansible/ansible.cfg" and set'host_key_checking' to False
-ansible all -m ping -t inventory.txt                # all is built-in group_name # we can use group_name
-ansible all -a "/sbin/reboot"
+ansible target1 -m ping -i inventory.txt            # -m = module #-i = inventory file # target1 is host_name # check the connection
+ansible target1 -m shell -a "ls -l" -i inventory.txt              # -a for argument
+ansible target2 -m apt -a "name=nginx state=present"            # multiple arguments        # install a package
+ansible target4 -m apt -a "name=nginx state=present" -b         # -b = become sudo    # sudo apt install nginx
+ansible target3 -m service -a "name=nginx state=restarted"     # restart a service
+ansible all -m ping -t inventory.txt                # all is built-in group_name # we can use group_name   # ping all hosts
 ansible target* -m ping -i inventory.txt              # target* means target1, target2, ....
-ansible-doc module_name	                             #Show help/documentation for module
 ```
+
+## ansible commands
+```bash
+ansible all -m ping                                  # "ansible" runs an ad-hoc command
+ansible-playbook site.yml -i inventory.txt          # ansible-playbook runs a playbook
+ansible-playbook site.yml -i inventory.txt -v          # -v for verbose mode (some commnds with output like "ls" does not show without -v)
+ansible-playbook site.yml -i inventory.txt -vvv          # see full execution logs
+ansible-inventory --list -i inventory.ini            # display inventory file in json format in terminal
+ansible-inventory --graph -i inventory.ini            # display inventory hosts like ini format
+ansible-doc apt	                                      # Show help/documentation for module
+ansible-doc -s apt                                # Show options of apt module (short format)
+ansible-doc -l                                          # list available modules
+ansible-doc -t callback -l                          #  list available callback plugins
+ansible-config list                                  # list all config options
+ansible-config dump                                 # dump all config options
+ansible-galaxy install geerlingguy.nginx            # install a package (Ansible roles and collections)
+ansible-vault encrypt secrets.yml                     # encrypt a file
+ansible-vault decrypt secrets.yml                     # decrypt a file
+ansible-vault edit secrets.yml                         # decrypt my file temprary in default editor for editing
+ansible-console                                   # Start an interactive console for running tasks
+```
+
+### question
+1. fingerprint
+2. output
+3. order of running
+4. multiple task in one name
+5. scrup module
+6. with_items
 
 ### playbook
 + playbook=  a playbook is a single yaml file
 + play = defines a set of activities to run on host
 + task = a single action to run on a host
-+ directive = configuration parameters like hosts, vars, tasks and so on
 + module = different actions run by tasks are called moduls like `command`, `script`, `service`, `yum`
-+ Ad-hoc commands = one-line commands in terminal without writing a playbook like `ping`
-+ run a playbook= `ansible-playbook myfile.yml -i inventory.txt`
++ directive = configuration parameters like hosts, vars, tasks and so on
 + idempotency = An operation is idempotent if the result of performing it once is exactly the same as the result of performing it repeatedly without any intervening actions.
 
 ```yaml
@@ -140,6 +189,8 @@ tasks:
         state=present
 ```
 
+### Output format
+
 ### variables in tasks
 
 ```yaml
@@ -164,6 +215,7 @@ command: echo "User is {{ username| lower }}"      # convert username to lowerca
 command: echo "User is {{ username| title }}"      # convert username to titlecase: Alice
 command: echo "User is {{ username| replace('foo', 'bar') }}"      # replace foo with bar
 command: echo "User is {{ username| default('bar') }}"      # if username is empty or is not defined, use 'bar'
+command: echo "User is {{ username| default(alireza) | upper | replace('A', '4') }}"      # multiple filters
 command: echo "{{ [1, 2, 3] | min }}"      # returns 1    # max   # we can define a list instead of variable in jinja2
 command: echo "{{ [1, 2, 3, 3, 3] | unique }}"      # returns 1, 2, 3
 command: echo "{{ [1, 2, 3, 4] | union[4,5] }}"      # returns 1, 2, 3, 4, 5
@@ -245,6 +297,17 @@ tasks:
 + also there are other iterators like `with_files`, `with_url`(connect to urls), `with_mongodb`(connect to dbs)
 + `with-*` is a `look up plugin`
 + `item` keyword is commonly used in loops to reference the current item being processed.
+
+##### 0. with_items
+
+```yaml
+- name: simple with_items
+  shell: echo 1                      # run "echo 1" 3 times
+  with_items:                        # we access the values of with_items by {{}}
+    - foo
+    - bar
+    - nginx
+```
 
 ##### 1. Loop over an array
 ```yaml
@@ -506,6 +569,7 @@ roles/
 
 
 ### moduels  (based on functionality)
++ A module is a reusable, standalone script
 
 1. `System modules`: 1. user 2. group 3. hostname 4. ping 6. iptables
 2. `service modules`: 1. service 2. systemd
@@ -752,51 +816,81 @@ if __name__ == "__main__":
 + windows target should have some requirements like `pywinrm`, `winrm`
 + we can prepare windows by `windows system prep` in document
 
-### Plugnis
-
-
-### callback plugins
-
 ### custome modules
 + for creating a custome module we have to create a python script (can also be in other languages)
 + location of built-in modules (global location): `usr/lib/python2.7/dist-packages/ansible/modules`
 + Ansible automatically finds modules in `library/` directory or via `ANSIBLE_LIBRARY` env var. example: `/library/my_custom_module.py`
-```py
-#!/usr/bin/python
 
+
+```py
+#!/usr/bin/python                      # shebang or hashbang for scripting languages like perl, awk, bash
 try:
     import json
 except ImportError:
-    import simplejson as json
-
+    import simplejson as json                  # if json is not available
 from ansible.module_utils.basic import AnsibleModule
-import time
-import sys
+import time                               # for printing time in the output
+
+DOCUMENTATION = r''' how to use '''
+EXAMPLES = r'''name: mytest'''
+RETURN = r''' something '''
+# tasks:
+#   custome_module:                       # name of this file
+#        - msg: "Hello World"              # define in AnsibleModule
 
 def main():
-    module = AnsibleModule(
-        argument_spec = dict(
-            msg = dict(required=True, type='str')
+    module = AnsibleModule(                     # module.params[]      # module.exit_json()         # module.fail_json()
+        argument_spec = dict(                         # argument_spec for defining accepted parameters
+            msg = dict(required=True, type='str')     # msg is the name of parameter in tasks section in playbook
         )
     )
-
-    msg = module.params['msg']
-
+    msg = module.params['msg']                # get parameter from user
     try:
-        # Successfull Exit
-        module.exit_json(changed=True, msg='%s - %s' % (time.strftime("%c"), msg))
+        module.exit_json(changed=True, msg='%s - %s' % (time.strftime("%c"), msg))      # Successful exit with your result
     except:
-        # Fail Exit
-        module.fail_json(msg="Error Message")
-
-if __name__ == '__main__':
-    main()
+        module.fail_json(msg="Error Message")         # Fail Exit
 ```
 
-### custome filters
 
 
+### Plugnis
++ Ansible uses a `plugin architecture` to enable a rich, flexible and expandable feature set.
++ Plugin is a piece of code that extends Ansible's core functionality, enabling customization and flexibility that we can create our own plugins.
++ we can create our custome plugin like `custome callback plugin` or `custome filter plugin`
++ `Modules` run on target hosts, while `plugins` run on the Ansible controller.
++ Modules are focused on performing tasks on remote systems, while plugins extend Ansible's core functionality and behaviors.
 
+1. Action Plugins --->	Control how a module runs on the target --->	normal, command, template
+2. Callback Plugins --->	Modify output or logging --->	default, json, minimal, yaml
+3. Connection Plugins --->	Control how to connect to hosts (SSH, Docker) --->	ssh, docker, local
+4. Lookup Plugins --->	Retrieve data from external sources --->	file, env, passwordstore
+5. Inventory Plugins --->	Load hosts dynamically --->	ini, yaml, aws_ec2, gcp_compute
+6. Filter Plugins --->	Transform data in Jinja2 templates --->	to_json, lower, regex_replace
+7. Vars Plugins --->	Load variables from external locations --->	host_group_vars, env_var
+8. Strategy Plugins --->	Control task execution behavior --->	linear, free, debug
+
+#### custome filter plugin
++ creating a Python file in this folder: `filter_plugins/`
++ `export ANSIBLE_FILTER_PLUGINS=filter_plugins` to say where to look for my custome plugins
+
+```py
+# file path: filter_plugins/myfilters.py
+def reverse_string(value):                   # filter function accepts only one argument which is input of module
+    return value[::-1]
+
+class FilterModule(object):                 # class
+    def filters(self):
+        return {                                     # return a dict of filter names
+            'reverse': reverse_string                # name inside playbook
+        }
+# - debug:
+#    msg: "{{ 'wolf' | reverse }}"        # output: flow
+```
+#### custome callback plugin
++ the defulat callback plugin for printing output is `skippy`
++ `export ANSIBLE_STDOUT_CALLBACK=json` will show the output in json format
++ `Mail` is another callback plugin which can send email
++ `Hipchat`, `Slack`, `logstash` are other callback plugins for sending notifications in these apps
 
 
 
