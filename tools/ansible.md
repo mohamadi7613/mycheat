@@ -1,25 +1,22 @@
 
 # Ansible
 
-## ssh basic requirements
+### ssh basic requirements
 ```bash
 sudo ufw allow ssh
 sudo ufw enable
 sudo ufw status
 sudo apt install openssh-server               # this should be installed on target server
+sudo apt install openssh-client               #  this should be installed on controller for connect to servers
 sudo systemctl status ssh
 ```
 
-### fingerprint
-+ An `SSH fingerprint` is a short, unique hash of a server’s public SSH key.
-+ When you connect to an SSH server for the first time, your client gets the server’s public key.
-+ SSH stores its public key fingerprint in a file called: `~/.ssh/known_hosts`
-+ The fingerprint helps verify that you’re connecting to the correct server, not to an attacker
-+ after this command we get `ssh fingerprint error`.
-+ two solutions: 1. ssh to this ip before ansible comamnd (recommend) 2. "vi /etc/ansible/ansible.cfg" and set'host_key_checking' to False
+### Fingerprint Error
+two solutions: 
+1. ssh to this ip before ansible comamnd (recommend) 
+2. "vi /etc/ansible/ansible.cfg" and set'host_key_checking' to False  (not secure)
 
-```bash
-```
+
 ## Install Ansible
 
 ```bash
@@ -89,18 +86,12 @@ ansible-vault edit secrets.yml                         # decrypt my file temprar
 ansible-console                                   # Start an interactive console for running tasks
 ```
 
-### question
-1. fingerprint
-2. output
-3. order of running
-4. multiple task in one name
-5. scrup module
-6. with_items
 
 ### playbook
 + playbook=  a playbook is a single yaml file
 + play = defines a set of activities to run on host
 + task = a single action to run on a host
++ block = groups multiple tasks together.
 + module = different actions run by tasks are called moduls like `command`, `script`, `service`, `yum`
 + directive = configuration parameters like hosts, vars, tasks and so on
 + idempotency = An operation is idempotent if the result of performing it once is exactly the same as the result of performing it repeatedly without any intervening actions.
@@ -189,7 +180,18 @@ tasks:
         state=present
 ```
 
-### Output format
+### Common Fields in JSON-style Output
+
+1. changed	Whether the system changed or not
+2. stdout	Output of the command
+3. stderr	Error output, if any
+4. rc	Return code (0=success, non-zero=failure)
+5. unreachable  SSH connection failed (e.g., wrong IP, network, firewall)
+6. failed          failed during execution
+7. skipped      tasks skipped due to conditions (when)
+8. ignored         Tasks that failed but were ignored due to ignore_errors: yes
+9. rescued        Tasks that failed but were rescued with rescue: block
+
 
 ### variables in tasks
 
@@ -392,6 +394,11 @@ tasks:
 ```
 
 
+### Order of execution
++ Plays run in the order they are written in the playbook top to bottom.
++ For each play, hosts are processed in order they are listed in the inventory.
++ Tasks inside a play run in order from top to bottom.
++ Handlers are queued during task execution. Executed at the end of the play if notified by one or more tasks.
 
 ### Asynchronous tasks: basic timers
 
@@ -597,7 +604,7 @@ tasks:
       command: mkdir /folder creates=/folder      # "creates" means check if that folder deos not exists creats it
       shell: "echo $HOME"	                      # shell is more powerful than command module
       raw: yum install -y nginx	                # Run raw SSH command
-      script: ./app/script.sh     # # script module copy the file into remote machine by default and then runs it
+      script: ./app/script.sh     # # script module copy a local file from controller into remote machine and then excute it
 ```
 
 
