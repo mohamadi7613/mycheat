@@ -16,7 +16,6 @@ two solutions:
 1. ssh to this ip before ansible comamnd (recommend) 
 2. "vi /etc/ansible/ansible.cfg" and set'host_key_checking' to False  (not secure)
 
-
 ## Install Ansible
 
 ```bash
@@ -71,6 +70,7 @@ ansible all -m ping                                  # "ansible" runs an ad-hoc 
 ansible-playbook site.yml -i inventory.txt          # ansible-playbook runs a playbook
 ansible-playbook site.yml -i inventory.txt -v          # -v for verbose mode (some commnds with output like "ls" does not show without -v)
 ansible-playbook site.yml -i inventory.txt -vvv          # see full execution logs
+ansible-playbook site.yml -i inventory.txt --ask-become-pass      # if you want to become root for running commands in playbook
 ansible-inventory --list -i inventory.ini            # display inventory file in json format in terminal
 ansible-inventory --graph -i inventory.ini            # display inventory hosts like ini format
 ansible-doc apt	                                      # Show help/documentation for module
@@ -100,6 +100,7 @@ ansible-console                                   # Start an interactive console
 -                  # a dash is for a sinlge play      # each play has some properties like: name + hosts + tasks
     name: Play 1         # each play is a dictionary, and a playbook is a list of dictionaries
     hosts: localhost    # hosts come from inventory file  # hosts: localhost, group_name, host_name, patterns like *.company.com
+    become: true            # run all tasks as root like -b in ad-hoc commands
     vars:              # we can define variables in yaml file
         dns_server: 10.1.250.10                  # this is a variable
     tasks:                                        # tasks is a ordered list and order is important
@@ -108,6 +109,7 @@ ansible-console                                   # Start an interactive console
        
         - name: List open ports                               # command module does not support (|,>, >>) and shell variables
           shell: netstat -tuln | grep LISTEN                # shell is for runing inline shell commands directly in the playbook
+          become: true                                         # Only this task will run as root
 
         - name: Execute a script
           script: myscript.sh                # script module is for uploading and executing a local script file on the target
@@ -147,13 +149,6 @@ ansible-console                                   # Start an interactive console
             enabled: yes                   # when the server restart, the service will automatically start
 
 
-        - name: Install something
-          yum:
-            name: httpd
-            state: present
-          when: ansible_os_family =="RedHat" and          # conditional
-                ansible_distribution_version == '16.4'
-
         - name: Copy index.html to web server            # use scp for copy a file from local to ansible controle 
           copy:                          # scp alternative for targets
             src: files/index.html       # Path on your Ansible control machine
@@ -171,9 +166,9 @@ ansible-console                                   # Start an interactive console
 
 ```bash
 tasks:
-    - apt: pkg=vim state=present           # 1. one-line command
+    - apt: pkg=vim state=present           # 1. one-line command     [no space after =]
     - apt:                                # 2. multi-line command (map)
-        pkg: vim
+        pkg: vim                          # a space should be after colon
         state: present
     - apt: >                                # 3. Foldable scalar
         pkg=vim
@@ -189,8 +184,8 @@ tasks:
 5. unreachable  SSH connection failed (e.g., wrong IP, network, firewall)
 6. failed          failed during execution
 7. skipped      tasks skipped due to conditions (when)
-8. ignored         Tasks that failed but were ignored due to ignore_errors: yes
-9. rescued        Tasks that failed but were rescued with rescue: block
+8. ignored         Tasks that failed but were ignored due to `ignore_errors: yes`
+9. rescued        Tasks that failed but were rescued with rescue `Try-catch`
 
 
 ### variables in tasks
@@ -230,6 +225,32 @@ command: echo "{{ 'c:\windows\myfoleder' | win_basename }}"      # returns "myfo
 ```
 
 
+### Ansible facts
+
+```yaml
+hosts: all
+gather_facts: no                           # By default, Ansible gathers facts at the beginning of a playbook run
+tasks:
+      name: print ansible variables
+      shell: echo {{ansible_os_family}}                  # os fatcs: ansible_distribution, ansible_distribution_version, ...
+      shell: echo {{ansible_memtotal_mb}}                  # Hardware Facts: ansible_processor, ansible_architecture
+      shell: echo {{ansible_hostname}}                  # Network Facts: ansible_domain, ansible_interfaces, ...
+      shell: echo {{ansible_pkg_mgr}}                  # Package Manager Facts: ansible_pkg_mgr_version
+      shell: echo {{ansible_python_version}}                  # python facts: ansible_python_interpreter
+      shell: echo {{ansible_facts}}        # ansible_facts prints a dictionary containg all facts gathered about the host
+```
+
+### Magic variables
+```yaml
+tasks:                                               # variables that are automatically available in playbooks
+      name: print magic variables
+      shell: echo {{inventory_hostname}}                  # Inventory Variables: inventory_hostname_short
+      shell: echo {{playbook_dir}}                   # Playbook Variables: playbook_name
+      shell: echo {{ansible_hostname}}                   # Host Variables: ansible_os_family
+      shell: echo {{ansible_failed_result}}                    # Task Variables
+      shell: echo {{item}}                  # Loop Variables: loop.index, loop.index0
+```
+
 ### register
 ```yaml
 - name: Example of register
@@ -240,8 +261,9 @@ command: echo "{{ 'c:\windows\myfoleder' | win_basename }}"      # returns "myfo
       register: result                        # Saves the command output in a variable called result
 
     - name: Show the result
-      debug:
+      debug:                           # result is a json, we can print it also
         var: result.stdout             # result.stderr, result.rc (return code in integer), result.stdout_lines (output as a list)
+        msg: "The current time is: {{ result.stdout }}"       # using jinja template
 ```
 
 ### Conditions
@@ -249,9 +271,9 @@ command: echo "{{ 'c:\windows\myfoleder' | win_basename }}"      # returns "myfo
 ##### 1. simple condition
 ```yaml
 tasks:
-  - name: Shutdown CentOS systems
+  - name: Shutdown CentOS systems                   # for if-else you need to write 2 task
     command: /sbin/shutdown -t now                   # run this command if condition is true
-    when: ansible_facts['distribution'] == "CentOS"
+    when: ansible_facts['distribution'] == "CentOS"      # using ansible facts in the conditions
 ```
 
 ##### 2. multiple conditions
@@ -260,9 +282,26 @@ tasks:
   - name: Shut down CentOS 6 systems
     ansible.builtin.command: /sbin/shutdown -t now        # list means "AND"
     when:            # When you have multiple conditions that all need to be true we can specify them as a list
-      - ansible_facts['distribution'] == "CentOS"
-      - ansible_facts['distribution_major_version'] == "6"
+      - ansible_facts['distribution'] == "CentOS"                   # and conditional
+      - ansible_facts['distribution_major_version'] != "6"            # ansible_facts is a dictionary
+```
+
+##### 3. Operators
+
+```bash
+vars:
+    fruits:
+      - apple
+      - banana
+      - cherry
+tasks:
+  - name: Shut down CentOS 6 systems
+    shell: echo "1" >> 1.txt
     when: (ansible_facts['distribution'] == "CentOS") or (ansible_facts['distribution_major_version'] == "6")   # OR
+    when: ansible_os_family =="RedHat" and  ansible_distribution_version == '16.4'         # and
+    when: apple in fruits                      # check membership       # not in
+    when: 23 is integer                         # is operator checks the type of a variable or if it is defined
+    when: my_var is defined                   # defined, undefined
 ```
 
 ##### 3. Regex_search in condition
@@ -294,6 +333,8 @@ tasks:
 ```
 
 
+
+
 ### Loops
 + we can use `loop` or `with_items` (in older versions) or `with_dict` for creating loops in yaml file
 + also there are other iterators like `with_files`, `with_url`(connect to urls), `with_mongodb`(connect to dbs)
@@ -316,7 +357,7 @@ tasks:
 tasks:
   - name: Install multiple packages
     apt:
-      name: "{{ item }}"
+      name: "{{ item }}"          # item is a magic variable
       state: present
     loop:                     # inside loop we defined an array of string
       - nginx
@@ -332,8 +373,8 @@ tasks:
  name: Create users
  tasks:
     - user: name="{{item.name}}" state=present             # instead of duplicating this line we can use loop
-    - user: name="{{item}}" state=present             # if we had an array of strings
-      loop:                                        # loop or with_items in older versions
+    - user: name="{{item}}" state=present             # state=present means if we had an array of strings
+      loop:                                        # loop in new versions and with_items in older versions
         - name: ali                              # loop is an array of dictionaries
           id: 12
         - name: mamad
@@ -395,10 +436,29 @@ tasks:
 
 
 ### Order of execution
-+ Plays run in the order they are written in the playbook top to bottom.
++ Plays run in the order they are written in the playbook top to bottom. 
 + For each play, hosts are processed in order they are listed in the inventory.
 + Tasks inside a play run in order from top to bottom.
 + Handlers are queued during task execution. Executed at the end of the play if notified by one or more tasks.
+
+### strategy
+1. `strategy` defines `execution flow control` and how tasks are executed across hosts during a play.
+2. `linear` (default): Runs each task on all hosts (controlled by `forks`) before moving to the next task.
+3. `free`: Each host runs independently; does not wait for others
+4. `host pinned` or `serial`: Similar to free, but limits concurrent tasks per host (uses `serial` instead of `strategy`).
+5. `serial: 1` means wait to finish all tasks for every sinle host and then go for next one.
+6. `debug`: Interactive debugging (asks for user input on failures).
+7. `ansible forks`: a number in `ansible.cfg` file which defines the maximum parallel host connections (default is 5)
+
+
+```yaml
+- hosts: all         # see animations in youtube to understand better
+  strategy: free  # Overrides default 'linear'
+  serial: 3         # Overrides default '1'   # we can use percentage or number
+  tasks:
+    - name: Run tasks as fast as possible
+      command: /bin/some_task
+```
 
 ### Asynchronous tasks: basic timers
 
@@ -411,14 +471,14 @@ tasks:
       poll: 0                 # zero means fire-and-forget, don’t wait . Useful when you don’t care about the result
 ```
 
-### Asynchronous tasks: Start, then Check Later 
+### Asynchronous tasks: Start, then Check Later  ??????
 
 ```yaml
 - name: Start task, check later
   shell: longtask.sh
   async: 300
-  poll: 0
-  register: long_job
+  poll: 0                             # fire-and-forget for checking later
+  register: long_job                  # save in a variable for checking later
 
 - name: Wait and check the status                   # we need a new task for chenking later
   async_status:                                  # async_status is a module used to check async jobs and jid(job id) is a parameter for that
@@ -429,48 +489,38 @@ tasks:
   delay: 5                                 # wait 5 seconds between tries
 ```
 
-
-### strategy
-1. `strategy` defines `execution flow control` and how tasks are executed across hosts during a play.
-2. `linear` (default): Runs each task on all hosts (controlled by `forks`) before moving to the next task.
-3. `free`: Each host runs independently; does not wait for others
-4. `host_pinned` or `serial`: Similar to free, but limits concurrent tasks per host (uses `serial` instead of `strategy`).
-5. `debug`: Interactive debugging (asks for user input on failures).
-6. `ansible forks`: a number in `ansible.cfg` file which defines the maximum parallel host connections (default is 5)
-
-
-```yaml
-- hosts: all         # see animations in youtube to understand better
-  strategy: free  # Overrides default 'linear'
-  serial: 3         # Overrides default '1'   # we can use percentage or number
-  tasks:
-    - name: Run tasks as fast as possible
-      command: /bin/some_task
-```
-
-### Error handling
-+ if we have one server and we get error it exits the playbook
-+ if we have multiple servers and we get error in one server, ansible takes that server out of the list and continues to execute tasks across other healthy servers and tries to complete as many servers as posible 
-+ `ignore_errors: yes`: Ignores errors for a specific task and proceeds to the next task (dont skip the server)
-+ `any_errors_fatal: true`: if we get error in one of the servers, all the servers will stop the execution all together.
-+ `failed_when`: usually used with `ignore_errors: yes`. we can define a condition
-
-```yaml
-- name: Check disk space                     # fail the playbook if the condition is true
-  command: df -h /                            # if the condition is not true continue as normal
-  register: disk_result
-  failed_when: "'100%' in disk_result.stdout"
-```
-
 ### Async handling
 + Suppose you run a script that might update something, but it doesn't return a specific exit code to indicate change. You want to mark the task as changed only if the word updated appears in the output.
 
 ```yaml
 - name: Run script
   command: ./my_script.sh
-  register: script_out
-  changed_when: "'Updated' in script_out.stdout"
+  register: script_out                              
+  changed_when: "'Updated' in script_out.stdout"            # for using string value with operators wrap all the command with cotation
+
+- name: Check disk space                     # fail the playbook if the condition is true
+  command: df -h /                            # if the condition is not true continue as normal
+  register: disk_result
+  failed_when: "'100%' in disk_result.stdout"
 ```
+
+
+### Error handling
++ if we have one server and we get error in one of taks it exits the playbook
++ if we have multiple servers and we get error in one server, ansible takes that server out of the list and continues to execute tasks across other healthy servers and tries to complete as many servers as posible 
++ `ignore_errors: yes`: Ignores errors for a specific task and proceeds to the next task (dont skip the server)
++ `any_errors_fatal: true`: if we get error in one of the servers, all the servers will stop the execution all together.
+
+```yaml
+- name: Example with any_errors_fatal
+  hosts: all
+  any_errors_fatal: true              # Stop on any error
+  tasks:
+    - name: my name
+      shell: echo "foo"
+      ignore_errors: yes           # skip errors for this task
+```
+
 
 ### Try-catch
 

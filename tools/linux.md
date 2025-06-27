@@ -523,12 +523,20 @@ echo -n "hello"; date  # print hello and date in one line===> echo -n ==> one li
 { echo -n "hello"; date;} > output.txt     # command grouping and redirect both output into a file{space needed}
 ```
 
-## Trnaslation
+
+## Language Translation
+
+```bash
+trans -i input.txt -o output.txt                # translate a language    # sudo apt install translate-shell
+```
+
+## Char Trnaslation
 ```bash
 echo "this is a test" | tr ' ' '_'              # replace space with _ 
-tr [a-z] [A-Z]                                     # uppercase
+echo "a" | tr [a-z] [A-Z]                                     # uppercase   # tr is a utility for translating or deleting characters
 tr A-Z a-z < foo.txt                                       # lowercase (you can do not use [])
 ```
+
 
 ## Calculator
 ```bash
@@ -537,6 +545,18 @@ quit                        # not <C-c>
 echo "1 + 2" | bc           # use pipeline
 bc < foo.txt                # use file (4 +5 inside the foo.txt) input redirection
 ```
+
+### Calendar
+```bash
+calendar                # occasaional wikipea calendar       # sudo apt install calendar
+cal                    # month view like paper calendar     # sudo apt install ncal
+cal -y                 # display 365 days in 12 months
+cal -3              # Display the previous, current, and next month
+cal -A 2               # Display the current month and the next 2 months
+cal -B 1                 # Display the current month and the previous month
+```
+
+
 ### Date and time
 
 ```bash
@@ -561,6 +581,7 @@ time tree              # how long takes this command(tree) to execute
 
 ```bash
 shutdown
+reboot
 ```
 
 ## Variables

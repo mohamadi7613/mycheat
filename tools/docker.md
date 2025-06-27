@@ -294,7 +294,7 @@ services:                                 # list of containers
             - .:/app                     # map current folder into: /app in container
         environment:                      # like -e in "docker run"
             - REDIS_HOST=redis-service     # name of container
-            - REDIS_PORT=6379
+            - REDIS_PORT=6379             # we can read environment variavles in progrmaing languages like `.env file`
     tests:                               # create  a container for running tests
         build:
             context: .

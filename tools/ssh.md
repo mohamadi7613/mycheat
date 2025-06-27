@@ -126,9 +126,10 @@ ssh root@192.168.1.10                                  # if you put your private
 
 
 ### ssh-keygen
-+ `known_hosts` is  a file that stores the public keys (fingerprints) of SSH servers you’ve connected to before.
 
 ```bash
+cat /etc/ssh                     # ssh keys location
+cat ~/.ssh/known_hosts         # known_hosts is a file that stores the public keys (fingerprints) of SSH servers you’ve connected to before.
 ssh-keygen                                            # generates key interactively   # creates key pair (public and private)
 ssh-keygen -t rsa                                     # -t for type of algorithm: rsa, dsa(deprecated), ecdsa, ...   # ssh-keygen --help
 ssh -Q key                                          # list of public algorithms like rsa (the first one is default)
