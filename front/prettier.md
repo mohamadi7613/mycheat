@@ -12,23 +12,24 @@ npx prettier --check myfile.js      # check is formated or not
 ## config .prettierrc
 ```json
 {
-    "arrowParens": "always",
-    "bracketSpacing": true,
-    "embeddedLanguageFormatting": "auto",
-    "htmlWhitespaceSensitivity": "css",
-    "insertPragma": false,
-    "jsxBracketSameLine": false,
-    "jsxSingleQuote": false,
-    "printWidth": 80,
-    "proseWrap": "preserve",
-    "quoteProps": "as-needed",
-    "requirePragma": false,
-    "semi": false,              // semicolon
-    "singleQuote": false,
-    "tabWidth": 4,
-    "trailingComma": "es5",
-    "useTabs": false,
-    "vueIndentScriptAndStyle": false
+    "arrowParens": "always",               // Always include parentheses in arrow functions, e.g., (x) => x
+    "bracketSpacing": true,                // Add spaces between brackets in object literals: { foo: bar }
+    "embeddedLanguageFormatting": "auto",  // Format embedded code (e.g., in Markdown) automatically
+    "htmlWhitespaceSensitivity": "css",    // Respect CSS display property when formatting HTML
+    "insertPragma": false,                 // Do NOT add @format pragma to file headers
+    "jsxBracketSameLine": false,           // Put `>` of a multi-line JSX element on its own line
+    "jsxSingleQuote": false,               // Use double quotes in JSX attributes: <div className="example">
+    "printWidth": 80,                      // Wrap lines at 80 characters max
+    "proseWrap": "preserve",               // Do not change wrapping in markdown/text (preserve user input)
+    "quoteProps": "as-needed",             // Only add quotes around object properties when required
+    "requirePragma": false,                // Don’t format files unless they have a @format pragma
+    "semi": false,                         // Omit semicolons at the ends of statements
+    "singleQuote": false,                  // Use double quotes instead of single quotes
+    "tabWidth": 4,                         // Set the number of spaces per indentation level
+    "trailingComma": "es5",                // Add trailing commas where valid in ES5 (objects, arrays, etc.)
+    "useTabs": false,                      // Use spaces instead of tabs for indentation
+    "vueIndentScriptAndStyle": false       // Don't indent `<script>` and `<style>` blocks in Vue files
+
 }
 ```
 

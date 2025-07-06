@@ -7,6 +7,14 @@ https://tldr.sh/
 https://linux.die.net/man/
 ```
 
+### ?????
+
+```bash
+sudo yum install -y epel-release yum-utils
+sudo yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+sudo yum-config-manager --enable remi
+```
+
 ## list of package managers
 ```bash
 apt       # debian based   #.deb  # Ubuntu, Mint,kali, Debian, elementary OS, Zorin OS, BlackBox
@@ -583,6 +591,14 @@ time tree              # how long takes this command(tree) to execute
 shutdown
 reboot
 ```
+
+### PATH variables
+
+```bash
+vim .bash_profile
+export PATH=$PATH:~/myfolder              # write this in your .bash_profile
+```
+
 
 ## Variables
 ```bash

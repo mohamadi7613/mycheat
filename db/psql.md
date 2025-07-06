@@ -15,7 +15,7 @@ multiple version concurrency control
 
 
 ## Qestions?
-1. how to select all cols just without one col like desc
+1. how to select all cols just without one col
 
 
 

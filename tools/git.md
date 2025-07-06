@@ -36,7 +36,7 @@ WD                           SA                      L                          
 
 ## Help
 ```bash
-git status --help           # open a local html file in the browser
+git status --help           # opens a local html file in the browser
 git status -h                # inside termial
 ```
 

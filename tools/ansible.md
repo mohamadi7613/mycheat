@@ -97,6 +97,7 @@ ansible-console                                   # Start an interactive console
 + idempotency = An operation is idempotent if the result of performing it once is exactly the same as the result of performing it repeatedly without any intervening actions.
 
 ```yaml
+---                        # The --- indicates the beginning of a YAML document.
 -                  # a dash is for a sinlge play      # each play has some properties like: name + hosts + tasks
     name: Play 1         # each play is a dictionary, and a playbook is a list of dictionaries
     hosts: localhost    # hosts come from inventory file  # hosts: localhost, group_name, host_name, patterns like *.company.com
@@ -445,18 +446,21 @@ tasks:
 1. `strategy` defines `execution flow control` and how tasks are executed across hosts during a play.
 2. `linear` (default): Runs each task on all hosts (controlled by `forks`) before moving to the next task.
 3. `free`: Each host runs independently; does not wait for others
-4. `host pinned` or `serial`: Similar to free, but limits concurrent tasks per host (uses `serial` instead of `strategy`).
+4. `host pinned` or `serial`: Similar to free, but forces Ansible to complete a task on serial hosts before moving on to the next
 5. `serial: 1` means wait to finish all tasks for every sinle host and then go for next one.
 6. `debug`: Interactive debugging (asks for user input on failures).
 7. `ansible forks`: a number in `ansible.cfg` file which defines the maximum parallel host connections (default is 5)
+8. If you have 10 forks and 20 hosts, Ansible will execute tasks on 10 hosts at a time until all hosts have been processed.
+9. forks is about parallelism, while host_pinned is about prioritizing completion on individual hosts.
 
 
 ```yaml
 - hosts: all         # see animations in youtube to understand better
   strategy: free  # Overrides default 'linear'
+  startegy: host_pinned         # use this startegy with serial
   serial: 3         # Overrides default '1'   # we can use percentage or number
-  tasks:
-    - name: Run tasks as fast as possible
+  tasks:             # startegy is a play-level property (not for tasks)
+    - name: Run tasks as fast as possible       # strategy is play-level and we cannot change strategy in the middle of the play
       command: /bin/some_task
 ```
 
@@ -514,32 +518,76 @@ tasks:
 ```yaml
 - name: Example with any_errors_fatal
   hosts: all
-  any_errors_fatal: true              # Stop on any error
+  any_errors_fatal: true              # Stop all servers
   tasks:
     - name: my name
       shell: echo "foo"
-      ignore_errors: yes           # skip errors for this task
+      ignore_errors: yes           # skip error for this task
 ```
 
 
 ### Try-catch
 
 ```yaml
-- name: Example of block, rescue, always
-  block:
-    - name: Attempt risky task
-      command: /bin/false
+hosts: all
+tasks:
+    - name: Example of block, rescue, always
+      block:                                  
+          name: Attempt risky task
+          command: /bin/false
 
-  rescue:
-    - name: Handle failure
-      debug:
-        msg: "The task failed, running rescue actions"
+      rescue:
+        - name: Handle failure
+          debug:
+            msg: "The task failed, running rescue actions"
 
-  always:
-    - name: Always do this
-      debug:
-        msg: "This will always run, regardless of success or failure"
+      always:
+        - name: Always do this
+          debug:
+            msg: "This will always run, regardless of success or failure"
 ```
+
+### Block
+```yaml
+hosts: all
+tasks:
+    - name: group tasks
+      block:                                   # we can group tasks into blocks
+        - name: task 1
+          shell: echo 1
+
+        - name: task 2
+          shell: echo 2
+      when: ansible_os_family == "Debian"         # this condition apply to block level
+```
+
+### Handler
++ a `handler` is a special type of task that is triggered by other tasks when a change occurs
++ handlers such as restarting a service or reloading a configuration file.
+
+```bash
+tasks:
+  - name: Install Nginx
+    apt:
+      name: nginx                       # Handlers are run after all tasks in a playbook finish
+      state: present                    # 	A handler is only triggered once per play, even if multiple tasks notify it.
+    notify: Restart Nginx                # this triggers the handler if this task makes changes
+
+handlers:                             # handlers are triggered by other tasks
+  - name: Restart Nginx                # name of the handler, Handler must match the name
+    service:                          # 
+      name: nginx
+      state: restarted
+```
+
+###### 1. Listen for handlers
+
++ `listen` keyword allows multiple handlers to respond to the same notification
+
+```bash
+
+```
+
 
 
 ### File separation
@@ -567,37 +615,37 @@ my-ansible-project/
 
 ##### 0. file variables
 
-+ `host_vars` and `group_vars` are both folders for variables
++ `host_vars` and `group_vars` are both folder names for declaring variables
 + `host_vars` is for one host	and `group_vars` store variables shared by a group of hosts
-+ `host_vars/<hostname>.yml` applies only to that single host
++ `host_vars/<host_name>.yml` applies only to that single host  ---> [host_name] in inventory file
 + `group_vars/<group_name>.yml` applies to all hosts in that group ---> [group_name] in inventory file
 
 ```yaml
 # host_vars/db_servers.yml
-db_name: employees              # there is no need for including this file into playbook
+db_name: employees              # db_servers (name of file ) is an alias in inventory file 
 db_user: root                   # just use key:value pair
 
 # playbook.yml
-name: Deploy app
+name: Deploy app             # # there is no need for include, import or export syntax
 hosts: db_servers            # variables in host_vars/db_servers will automatically import for this host 
-tasks:
+tasks:                     
     - name: echo a var
-      command: echo {{db_name}}
-
+      command: echo {{db_name}}       # this variable is available for using in this file
 ```
+
 ##### 0. task files
 
 ```yaml
 #### tasks/depoly_db.yml
-- name: deploy db
+- name: deploy db                      # define tasks in this format
   command: echo "something"
 
 ### playbook.yml
-name:
-hosts:
-tasks:
-    - include: deploy_db.yml
-    - include: deploy_app.yml
+- name: Deploy app
+  hosts:  all
+  tasks:
+    include: deploy_db.yml            # you need to import tasks from deploy_db.yml using 'include' syntax
+    include: deploy_app.yml            # there is no need for specify tasks
 ```
 
 ##### 2. Standard Role-based Structure (Good for Large Projects)
@@ -623,6 +671,55 @@ roles/
     │   └── main.yml
 ```
 
+##### 3. Templates
+
++ `template` is a module
++ `jinja2` is a template engine
++ template module is used to copy a Jinja2-rendered file from controller to target
++ It’s very useful for dynamic configuration files, where the content needs to change based on variables, host facts, or conditions.
+
+> features in jinja2:
+    + we can insert variables, loops, conditions, filters, and more in the Jinja2 template
+
+1. Variable	      `{{ var_name }}`
+2. Conditionals	`{% if some_var %} ... {% endif %}`
+3. Loops	`{% for item in list %} ... {% endfor %}`
+4. Filters	
+
+
+
+```css
+my-playbook/
+├── playbook.yml
+└── templates/
+    └── nginx.conf.j2
+```
+
+```yaml
+vars:                                        # this variables will be available in nginx.conf.j2
+  nginx_port: 80
+  server_name: mysite.com
+  backend_host: 127.0.0.1
+  backend_port: 3000
+tasks:
+    - name: Deploy Nginx config
+      template:
+        src: nginx.conf.j2                      # Template file on controller
+        dest: /etc/nginx/nginx.conf              # Destination on target machine
+```
+
+
+```jinja2
+# templates/nginx.conf.j2
+server {
+    listen {{ nginx_port }};
+    server_name {{ server_name }};
+
+    location / {
+        proxy_pass http://{{ backend_host }}:{{ backend_port }};
+    }
+}
+```
 
 
 ### moduels  (based on functionality)
@@ -637,22 +734,19 @@ roles/
 7. `Windows modules`: 1. win_copy 2. win_command 3. win_file 4. win_ping
 
 
-###### free_form parameter
-+ free_form can be used in ad-hoc commands and playbook yaml file
+###### 0. free form parameter
 + free_form indicates that this module takes no parameter options like `cat 1.txt` or `mkdir /folder` are "free_form input"
-+ free_form is inside `parameter category` for `command module` but there is no parameter actually named `free_form` like `chdir`
 + `copy` takes "parameterised input" and its not `free_form` since it requires two parameters: 1. src 2. dest
-+ `copy` ad-hoc command: `ansible all -m copy -a "src=/local/path dest=/remote/path"`
-
++ `ping` is free form
 
 
 ##### 1. command execution
 ```yaml
 tasks:
-# command module parameters= `chdir`, `creates`,`removes`(when it exists run), `executable`(change shell), free_form
+# command module parameters= `chdir`, `creates`,`removes`(when it exists run), `executable`(change shell)
       command: cat 1.txt chdir=/etc               # "chdir" means change directory before executing cat  == cat /etc/1.txt
       command: mkdir /folder creates=/folder      # "creates" means check if that folder deos not exists creats it
-      shell: "echo $HOME"	                      # shell is more powerful than command module
+      shell: "echo $HOME"	                      # shell is more powerful than command module since we can  use pipes
       raw: yum install -y nginx	                # Run raw SSH command
       script: ./app/script.sh     # # script module copy a local file from controller into remote machine and then excute it
 ```
@@ -729,7 +823,8 @@ tasks:
 ### Ansible roles
 + [ansible-galaxy](https://galaxy.ansible.com/ui/)
 + roles are Reusable Ansible components
-+ we can create a role without `ansible-galaxy init` command, by creating a simple file directory manually
++ a role is an encapsulation of automation tasks, variables, files, templates, and handlers into a reusable and modular structure
++ every role has a file structure
 
 ##### 1. ansible roles commands
 ```bash
@@ -737,13 +832,14 @@ ansible-galaxy init myrole    # cd roles/ before this          # create a role f
 ansible-galaxy search mysql              # search in repo of ansible-galaxy
 ansible-galaxy install user.role_name              # install a package
 ansible-galaxy install geerlingy.mysql -p ./roles              # install it in current directory
+ansible-galaxy install -r requirements.yml              # install roles from requirements
 ansible-galaxy remove user.role_name              # remove
 ansible-galaxy list                             # list installed roles
 ansible-galaxy import myrole                # share in website
 ansible-config dump
 ansible-config dump | grep ROLE
 ```
-#### 2. ansible roles directory
+#### 2. ansible role file structure
 
 ```bash
 my_playbook\
@@ -769,7 +865,7 @@ myrole/
 ```
 
 
-##### 3. ansible roles in playbooks
+##### 3. using ansible roles
 ```yaml
 name: Config mysql
 hosts: db_server                  # roles runs tasks from `my_role/tasks/main.yml`
@@ -840,7 +936,8 @@ def get_inventory_data():             # Get inventory data from source in this f
 
 if __name__ == "__main__":                    # Default main function
     inventory_data = get_inventory_data()
-    print(json.dumps(inventory_data))           # json.dump()
+    a = json.dumps(inventory_data)                # json.dump()
+    print(a)                              # print is imp
 ```
 
 ##### cli args
