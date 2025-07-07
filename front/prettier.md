@@ -3,6 +3,13 @@
 
 # Prettier
 
++ Prettier is an opinionated code formatter that works with many editors
++ It works with many languages including JavaScript, TypeScript, HTML, CSS, JSON, Markdown, and more.
++ Makes code look the same across teams and editors
++ How it works?
+    Automatically adds/removes spaces, semicolons, line breaks
+    Normalizes code style (indentation, quotes, trailing commas, etc.)
+
 ```bash
 npm install -D prettier             # install as dep
 npx prettier --write myfile.js      # foramt this file
@@ -33,7 +40,7 @@ npx prettier --check myfile.js      # check is formated or not
 }
 ```
 
-## .prettierignore
+### .prettierignore
 
 ```bash
 node_modules     # it`s better to add this 
@@ -53,11 +60,6 @@ Add this to `package.json`
 ### Editor extenstion
 + It`s better to use prettier with package bcz it has one version for all the team.
 + Any local configuration overwrite your global settings.
-
-
-
-
-
 
 
 
