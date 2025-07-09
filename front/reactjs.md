@@ -16,6 +16,8 @@ npm install --save prop-types  // runtime type checking for React props and simi
 # 0. Conecpts
 
 ## File structure
+
+```css
 src/
 |-- api/                         # Axios configuration and API utility
 |   |-- axiosClient.js           # Axios instance with default settings
@@ -45,6 +47,7 @@ src/
 |-- __tests__/                   # writing tests
 |-- index.js                     # Application entry point
 |-- App.js                       # Root component
+```
 
 
 

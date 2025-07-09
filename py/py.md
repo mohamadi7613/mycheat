@@ -26,13 +26,13 @@ PI = 3.14                   # Constant               # 3.14 <class 'float'>
 fruits = ["apple", "banana", "cherry"]        # List → ordered, mutable, allows duplicates
 print(fruits, type(fruits))                   # ['apple', 'banana', 'cherry'] <class 'list'>
 
-point = (4, 5)                                # Tuple → ordered, immutable
+point = (4, 5)                                # Tuple → ordered, immutable, allows duplicates
 print(point, type(point))                     # (4, 5) <class 'tuple'>
 
-colors = {"red", "green", "blue"}             # Set → unordered, no duplicates
+colors = {"red", "green", "blue"}             # Set → unordered, mutable, no duplicates
 print(colors, type(colors))                   # {'red', 'green', 'blue'} <class 'set'>
 
-person = {"name": "Ali", "age": 30}           # Dict → key-value pairs, mutable
+person = {"name": "Ali", "age": 30}           # Dict → key-value pairs, mutable, no duplicates without error
 print(person, type(person))                   # {'name': 'Ali', 'age': 30} <class 'dict'>
 
 r = range(5)                                  # Range → sequence of numbers (0 to 4)
@@ -63,8 +63,12 @@ inf = float('inf')     # Positive infinity
 ninf = float('-inf')   # Negative infinity
 nan = float('nan')     # Not a Number
 
+print(inf , type(inf))      #  inf  <class 'float'>
+print(ninf, type(ninf))      # -inf  <class 'float'>
+print(nan, type(nan))        #  nan  <class 'float'>
+
 print(inf > 1000)      # True
-print(ninf < -1000)    # True
+print(ninf < -1000)    # True    
 print(nan == nan)      # False (NaN is not equal to anything, even itself)
 print(1/0)             # Error
 
@@ -102,8 +106,8 @@ x %= 5      # x = x % 5      # Modulo assignment (%=)
 a = 6       # 110
 b = 3       # 011
 
-a & b       # 2 → 110 & 011 = 010
-a | b       # 7 → 110 | 011 = 111
+a & b       # 2 → 110 & 011 = 010      # "and" is a logical operation
+a | b       # 7 → 110 | 011 = 111      # "or" is a logical operation
 a ^ b       # 5 → 110 ^ 011 = 101
 ~a          # -7 → bitwise NOT (inverts bits + adds sign)
 a << 1      # 12 → shift left by 1: 110 → 1100
@@ -131,19 +135,19 @@ total = (1 + 2 + 3 +
 ```py
 # input() and print() are global functions
 a = 10
-print(a, end="---")   # Output: 10---
-print(f"my name is {name} and I am {age} years old.")    # f-strings     # recommend
+print(a,32, sep="---", end=";")                                  # Output: 10---32;
+print(f"my name is {name} and I am {age} years old.")             # f-strings     # recommend
 print("my name is {} and I am {} years old.".format(name, age))   # .format() method with empty {}
-print("my name is %s and I am %d years old." % (name, age))    # % operator for ordered plcaeholder
+print("my name is %s and I am %d years old." % (name, age))       # % operator for ordered plcaeholder
 ```
 
 ### input
 
 ```py
-name = input("Enter your name: ")                                # normal syntax
+name = input("Enter your name: ")                                # input just accepts one argument
 age = int(input("Enter your age: "))                            # converting type
 age: int = int(input("Age: "))                                   # input with type hint
-value = input("Enter something (default=hello): ") or "hello"   # default for input
+value = input("Enter something (default=hello): ") or "hello"   # default for input    # or is logical operator
 ```
 
 
@@ -152,7 +156,9 @@ value = input("Enter something (default=hello): ") or "hello"   # default for in
 ##### 0. type checking
 
 ```py
+# we can use int(), float(), str(), ... for type checking
 type(123) == int                  # True → check exact type
+type("abc") == str                # True
 is_int = isinstance(123, int)      # True
 is_str = isinstance("abc", str)    # True
 ```
@@ -174,6 +180,7 @@ l = bool([])            # Empty list to False → False
 ```py
 # To List
 n = list("hello")       # Convert string to list of chars → ['h','e','l','l','o']
+o = list(123)           # Error! 'int' object is not iterable    # int, complex, float, bool, NoneType are not iterable
 o = list((1,2,3))       # Convert tuple to list → [1, 2, 3]
 p = list({1, 2, 3})     # Convert set to list → [1, 2, 3]
 
@@ -185,9 +192,8 @@ r = tuple("abc")        # Convert string to tuple → ('a', 'b', 'c')
 s = set([1, 2, 2, 3])   # Convert list to set (remove duplicates) → {1, 2, 3}
 t = set("hello")        # Convert string to set → {'h', 'e', 'l', 'o'}
 
-# To Dictionary (from list of key-value pairs)
-u = dict([("a", 1), ("b", 2)])  # → {'a': 1, 'b': 2}
-
+# To Dictionary 
+u = dict([("a", 1), ("b", 2)])  # → {'a': 1, 'b': 2}    #  convert a list of tuples
 ```
 
 ##### 3. Implicit type casting
@@ -217,17 +223,25 @@ if []:                     # [], {}, "", set(), range(0) are False
 ```py
 a = "this is a string"                      # define a string
 esc = "I don't \n know"                      # \n = new line
+
+# 1. Accessing
 b= len(a)                                   # length of string
 substring = a[6:11]                         # Slicing a string
 reversed_string = a[::-1]                    # Reversing a string
+contains = "is" in a                       # Check if "is" is in string → True    # "in" is membership operator
+
+# 2. Methods
 uppercase_string = a.upper()                 # lower(), capitalize(), title(), swapcase()
-contains = "is" in a                       # Check if "is" is in string → True
-count_is = a.count("is")                   # Count occurrences of "is" → 2
 abc.find("is")                            # find substring, returns index or -1 if not found → 2
 abc.rfind("is")                            # last occurrence (same as find if only one) → 5
 a = a.replace("string", "text")             # Replace substring → 'this is a text'
-split_list = a.split(" ")                   # Splitting a string into a list
+split_list = a.split()                   # Splitting a string into a list
 starts = a.startswith("this")             # Check if starts with "this" → True
+count_is = a.count("is")                   # Count occurrences of "is" → 2
+
+# 3. String operations
+"abc" + "def"                               # 'abcdef'    # concatenation
+"abc" * 3                                   # 'abcabcabc'   # repetition
 ```
 
 ### Number methods
@@ -238,7 +252,7 @@ sum([1,2,3])	# 6   # Sum of iterable
 max([1,2,3])	# 3   # Maximum of iterable	
 min([1,2,3])	# 1   # Minimum of iterable
 abs(-5)	         # 5    #Absolute value	
-round(3.1415)	# 3     # Round number	
+round(3.1415)	# 3     # Round number	# like int(3.1415) for type casting
 round(3.1415, 0)          # 3.0 (round to 0 decimal places)
 round(3.1415, 2)          # 3.14 (round to 2 decimal places)
 format(3.1415, ".2g")           # '3.1' 
@@ -248,7 +262,7 @@ print(f"{3.1415:.2g}")           # '3.1'          # using f-string for similar e
 ### Math functions
 
 ```py
-import math
+import math                   # mathematical functions defined by the C standard
 
 pi = math.pi                # π → 3.141592...
 e  = math.e                 # Euler's number → 2.718...
@@ -257,8 +271,6 @@ x = math.pow(2, 4)          # 2^4 → 16.0
 x = math.ceil(3.2)          # Round up → 4
 x = math.floor(3.8)         # Round down → 3
 x = math.trunc(3.9)         # Truncate to int → 3
-x = abs(-10)                # Absolute value → 10
-x = round(3.456, 2)         # Round to 2 decimal places → 3.46
 ```
 
 ### Random numbers
@@ -266,9 +278,9 @@ x = round(3.456, 2)         # Round to 2 decimal places → 3.46
 ```py
 import random
 
-x = random.randint(1, 10)   # Random int between 1 and 10 (inclusive)
 x = random.random()         # Random float between 0.0 and 1.0
-x = random.uniform(1, 5)    # Random float between 1 and 5
+x = random.randint(1, 10)   # Random int between 1 and 10 (inclusive)
+x = random.uniform(1, 10)    # Random float between 1 and 10
 x = random.choice([1, 2, 3]) # Random choice from list
 ```
 
@@ -276,8 +288,8 @@ x = random.choice([1, 2, 3]) # Random choice from list
 
 ```py
 # eval() and exec() are global functions
-eval("2+2")              # 4       # Evaluate string as python code
-exec("2+2")              # 4         # Execute Python code string
+eval("print(2+2)")              # 4       # Evaluate string as python code
+exec("print(2+2)")              # 4         # Execute Python code string
 ```
 
 ### Boolean methods
@@ -288,10 +300,10 @@ exec("2+2")              # 4         # Execute Python code string
 # and, or, not are logical operators
 all([1, 2, True])	     # All elements True?	
 any([1, 2, True])	     # Any element True?	
-bool("string")           # True
+bool("string")           # True      # type casting
 
 # boolean operators
-True + True              # 2
+True + True              # 2      # type casting implicitly
 False + True             # 1
 True * 3                # 3
 True - 1                # 0
@@ -303,10 +315,10 @@ True - 1                # 0
 # 1. List functions
 # len(), sorted(), reversed() are global functions
 len([1, 2, 3])                  #  3       # length of list
-sorted([3, 1, 2])          # [1, 2, 3]      # Return sorted list	
+sorted([3, 1, 2])          # [1, 2, 3]      # gets an iterable and return sorted list	
 reversed("abc")	               # <reversed object at 0x0000020116DA9630>     # Return reversed iterator	
 reversed([1, 2, 3])        # <list_reverseiterator object at 0x0000023920FD95D0>
-list(reversed("abc"))           # ['c', 'b', 'a']
+list(reversed("abc"))           # ['c', 'b', 'a']    # convert iterator to list
 
 # 2. List methods
 dogs = ["Bulldog", "Beagle", "Labrador"]    #  <class 'list'>
@@ -320,7 +332,6 @@ dogs.clear()               # Remove all elements: []
 dogs.sort()                     # Sort list alphabetically
 dogs.reverse()                  # Reverse the list order
 copied_dogs = dogs.copy()       # Create a shallow copy of dogs
-
 
 # String Conversion and joining
 ", ".join(dogs)            # Convert to string: "Bulldog, Beagle, Labrador"
@@ -358,16 +369,16 @@ array_sum = np.sum(my_array)  # Sum of elements in the array  # Output: 15
 
 # 1. map
 numbers = [1, 2, 3, 4]
-doubled = map(lambda x: x * 2, numbers)
-print(list(doubled))  # Output: [2, 4, 6, 8]
+doubled = map(lambda x: x * 2, numbers)          # return a map object
+print(list(doubled))                            # Output: [2, 4, 6, 8]
 
 # 2. filter
-even = filter(lambda x: x % 2 == 0, numbers)
+even = filter(lambda x: x % 2 == 0, numbers)    # return a filter object
 print(list(even))  # Output: [2, 4]
 
 # 3. reduce
 from functools import reduce
-product = reduce(lambda x, y: x * y, numbers)
+product = reduce(lambda x, y: x * y, numbers)   # return int
 print(product)  # Output: 24
 ```
 
@@ -415,17 +426,20 @@ sorted(fruits)            # Return a sorted list of tuple elements
 fruits = {"apple", "banana", "cherry", "apple"}    # <class 'set'> # unordered collection of unique elements  # {"apple", "banana", "cherry"}
 len(fruits)                # Get number of elements: 3
 "apple" in fruits          # Check membership: True
+
+# methods
 fruits.add("orange")       # Add a single element: {"apple", "banana", "cherry", "orange"}
 fruits.update(["mango", "grape"])  # Add multiple elements: {"apple", "banana", "cherry", "orange", "mango", "grape"}
 fruits.remove("banana")    # Remove specific element (raises KeyError if not found)
 fruits.discard("pear")     # Remove element without error if not found
 fruits.pop()               # Remove and return an arbitrary element
 fruits.clear()             # Remove all elements: set()
+# we cannot directly replace an element in a set 
 ```
 ### Frozen Set
 
 ```py
-frozen = frozenset([1, 2, 3])   # Immutable set
+frozen = frozenset([1, 2, 3])   # Immutable set     # frozenset is a global function
 frozen.add(4)                  # Error: AttributeError (frozensets are immutable)
 ```
 
@@ -445,7 +459,7 @@ A & B                     # {3}
 A.intersection(B)         # {3}
 
 # Difference (elements in A but not in B)
-A - B                     # {1, 2}
+A - B                     # {1, 2}         # for + we get error
 A.difference(B)           # {1, 2}
 
 # Symmetric Difference (elements in A or B, but not both)
@@ -459,9 +473,11 @@ A.isdisjoint(B)           # Check if A and B are disjoint: False
 ```
 
 ####  Dictionary
+
 ```py
 person = {"name": "Alice", "age": 30, "city": "New York"}    # <class 'dict'>
 len(person)              # Get number of key-value pairs: 3
+squares = {x: x**2 for x in range(5)}  # Create a dictionary: {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}  # dict comprehension
 
 # Accessing Elements
 person["name"]           # Access value by key: "Alice"    # we can not access value by index or using dot notation
@@ -477,42 +493,43 @@ person.keys()              # Get all keys: dict_keys(["name", "age", "job"])
 person.values()            # Get all values: dict_values(["Alice", 31, "Engineer"])
 person.items()             # Get all key-value pairs: dict_items([("name", "Alice"), ("age", 31), ("job", "Engineer")])
 person_copy = person.copy() # Shallow copy
-
-# Deep copy
-import copy
-deep_copy = copy.deepcopy(person)
-squares = {x: x**2 for x in range(5)}  # Create a dictionary: {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}  # dict comprehension
 ```
-###  enum
-```py
-from enum import Enum  # a group of constants
-class Color(Enum):  # enum is a class from enum module
-    RED = 1
-    GREEN = 2
-    BLUE = 3
 
-favorite_color = Color.GREEN  # we access by name
-favorite_color = Color(2)      # we access by value
+
+###  enum
+
+```py
+from enum import Enum  # enum module 
+class Color(Enum):  # enum is a base class
+    RED = 1         # enum is a  set of named, constant values
+    GREEN = 2       # group of constants
+    BLUE = 3         # enum is iterable
+# enumerate() is a built-in function, it is something else
+favorite_color = Color.GREEN       # output: Color.GREEN   # we access by name
+favorite_color = Color(2)          # output: Color.GREEN   # we access by value
 ```
 
 
 ### Date and Time
 
 ```py
-import datetime
 from datetime import date, time, datetime, timedelta
-import time as time_module   # to avoid name conflict
-today = date.today()              # Date only
-now = datetime.now()              # Current local datetime
-utc_now = datetime.utcnow()       # Current UTC datetime
-d = date(2025, 7, 7)
-t = time(14, 30, 45)
-dt = datetime(2025, 7, 7, 14, 30, 45)
+
+today = date.today()              # 2025-07-09    
+today = datetime.today()          # 2025-07-09 11:54:07.409110    
+now = datetime.now()              # 2025-07-09 13:10:11.773849   
+d = date(2025, 7, 7)              # 2025-07-07
+t = time(14, 30, 5)               # 14:30:05
+dt = datetime(2025, 7, 7, 14, 30, 45)        # 2025-07-07 14:30:45
 dt.year       # 2025            # access items
 dt.month      # 7
 dt.strftime("%Y-%m-%d")        # '2025-07-07'
 dt.strftime("%A, %B %d")       # 'Monday, July 07'
 dt.strftime("%I:%M %p")        # '02:30 PM'
+
+
+import time
+timestamp = time.time()         # timestamp
 ```
 
 ### Regex
@@ -553,42 +570,7 @@ print(id(x)==id(y))    # False (different objects)
 ```
 
 
-##### 2. Assignment
-
-+ All objects (mutable or immutable) are stored in `heap memory`.
-+ Variable names are just references (pointers) stored in `stack frames`
-
-```py
-x = 545                     # for all data types the result is the same
-y = x                     #  Creates new reference(name) to same existing object
-print(x == y)             # True    #  after y = x, both x and y will point to the same object 545
-print(x is y)             # True    
-print(id(x) == id(y))      # True   #  Both variables point to same memory
-```
-##### 3. Reassignment (Change value after assignment) 
-
-+ Assignment (x=y) for both mutables and immutables makes them reference to the same object
-+ modification of mutables changes the original object in memory while modification of immutables creates a new object
-
-```py
-# 1. Mutable: list, dict, set, bytearray
-a = [1, 2, 3]  
-b = a          #   Both variables point to same memory   (shared reference)
-b.append(4)    #  alter the object in memory
-print(a, b)       # [1, 2, 3, 4] (both a and b point to same list)
-print(a == b)  # True
-print(a is b)  # True
-print(id(a) == id(b))  # True
-
-# 2. Immutable: int, float, bool, str, tuple
-x = 5
-y = x  
-y += 1    # When an immutable object is "modified" a new object is created in memory, and y refers to that object
-print(x, y)  # 5, 6      # The original object remains unchanged
-print(x == y)  # False
-```
-
-###### 4. Interning
+###### 2. Interning
 
 + `Interning` is an optimization technique to reuse small immutable objects in memory instead of creating new ones across the program
 + When an object is interned, any other object with the same value will reference the same memory location
@@ -611,6 +593,43 @@ print(c is d)       # False (not cached)
 print(id(c)==id(d))    # False
 ```
 
+##### 3. Assignment
+
++ All objects (mutable or immutable) are stored in `heap memory`.
++ Variable names are just references (pointers) stored in `stack frames`
+
+```py
+x = 545                     # for all data types the result is the same
+y = x                     #  Creates new reference(name) to same existing object
+print(x == y)             # True    #  after y = x, both x and y will point to the same object 545
+print(x is y)             # True    
+print(id(x) == id(y))      # True   #  Both variables point to same memory
+```
+
+##### 4. Reassignment (Change value after assignment) 
+
++ Assignment (x=y) for both mutables and immutables makes them reference to the same object
++ modification of mutables `changes the original object` in memory while modification of immutables `creates a new object`
+
+```py
+# 1. Mutable: list, dict, set, bytearray
+a = [1, 2, 3]  
+b = a          #   Both variables point to same memory   (shared reference)
+b.append(4)    #  alter the object in memory
+print(a, b)       # [1, 2, 3, 4] (both a and b point to same list)
+print(a == b)  # True
+print(a is b)  # True
+print(id(a) == id(b))  # True
+
+# 2. Immutable: int, float, bool, str, tuple
+x = 5
+y = x  
+y += 1    # When an immutable object is "modified" a new object is created in memory, and y refers to that object
+print(x, y)  # 5, 6      # The original object remains unchanged
+print(x == y)  # False
+```
+
+
 ##### 5. Tuples with mutable elements
 
 ```py
@@ -620,7 +639,7 @@ t[0].append(3)           # tuple structure remains the same
 
 ##### 6. Shallow copy and Deep copy
 
-+ both shallow and deep copy create new objects (duplicate them)
++ both create new objects with duplicating them
 + the purpose is to create `independent duplicates` of objects to aviod side effects of `Shared Reference`
 + `Shallow copy` of a collection is a copy of the collection structure, not the elements.
 + `Deep copy` duplicate everything (structure + elements)
@@ -669,8 +688,7 @@ print(original)
 
 + Python provides several control flow statements. 
 + These include `if-else`, `for loops`, and `while loops`.
-+ Python does not have `goto statement` or `labled statement`.
-
++ Python does not have `goto statement` or `labled statement` or `switch-case`
 
 ##### 1. if-else
 ```py
@@ -682,41 +700,78 @@ elif a==5:
 else:
     print("a < 5")
 
-# ternary operator
-a > 5 and print("a > 5") or print("a < 5")
 ```
+
 ####  2. ternary operator
+
++ python does not have any special operator for `ternary operator` like js: `condition ? a : b`
++ basic syntax for python: `a if condition else b`
+
 ```py
-res = "Positive" if a>0  else "Negative"    # a > 0 ? "Positive" : "Negative"
-res =  "Positive" if x > 0 else "Negative" if x < 0 else "Zero"   # x > 0 ? "Positive" : (x < 0 ? "Negative" : "Zero")
-res = ("Odd", "Even")[n % 2 == 0]     # n % 2 == 0 ? "Odd" : "Even"   # ternary operator using tupple (0=false,1=true)
+# 1. basic ternary
+res = "Positive" if a>0  else "Negative"                          # a > 0 ? "Positive" : "Negative"
+res =  "Positive" if x > 0 else "Negative" if x < 0 else "Zero"   # x > 0 ? "Positive" : (x < 0 ? "Negative" : "Zero")   # nested ternary
+print("a is greater" if a > b else "b is greater")                 # ternary operator inside print
+max = (lambda x, y: x if x > y else y)(4,5)                      # ternary operator inside lambda
+
+# 2. ternary with logical operators  (lazy evaluation)
+a > 5 and print("a > 5") or print("a < 5")
+
+# 3. ternary with data types
+res = ("Fail", "Pass")[score >= 50]                # (value_if_false, value_if_true)[condition]
+res = ("Odd", "Even")[n % 2 == 0]                  # n % 2 == 0 ? "Odd" : "Even"   # ternary operator using tupple (0=false,1=true)
 res = {True: "Odd", False: "Even"}[n % 2 == 0]     # n % 2 == 0 ? "Odd" : "Even"   # ternary operator using dictionary
-max = (lambda x, y: x if x > y else y)(a, b)    # ternary operator using lambda
-print("a is greater" if a > b else "b is greater")       # ternary operator using print
 ```
+
+#### 2.2 ternary lazy evaluation
+
++ `Lazy evaluation` means deferring computation until it’s actually needed.
++ Python uses `short-circuit evaluation`: 
+    + A and B --->	B is only evaluated if A is True
+    + A or B  --->	B is only evaluated if A is False
++ lazy tools: 1. generators 2. ternary 3. itertools library
++ Built-in Lazy functions: 1. range() 2. zip() 3. enumerate() 4. map() 5. filter() 6. iter()
+
+```py
+def expensive():
+    print("Called")
+    return True
+
+print(False and expensive())  # "Called" is NOT printed
+print(True or expensive())    # "Called" is NOT printed
+print(True and expensive())   # "Called" IS printed
+```
+
 
 ####  3. for loop
 ```py
 # 1. Range
 for i in range(5):     # range is a function
     print(i)    # Output: 0 1 2 3 4
-for i in range(2, 5):
+for i in range(2, 5):          # with range() we do not need to subtract the iterator
     print(i)    # Output: 2 3 4
 
 # 2. List, Set, Tupple, String
 for item in [1, 2, 3, 4, 5]:   # iterable
-   print(item)
-
+   print(item)                  # 1, 2, 3, 4, 5
 
 # 3. dict
 for k in {"name":"ali","age":45}:
-    print(k)
-for k,v in {"name":"ali","age":45}.items():      # dict.items() returns key and value
+    print(k)                                 # age, name
+for k,v in {"name":"ali","age":45}.items():      # dict.items() returns a list of tuple (key, value)
     print(k,v)
 
 # 4. enumerate
-for i, j in enumerate(['a', 'b', 'c']):  # enumerate function returns index and value   [(0, 'a'), (1, 'b'), (2, 'c')]
+for i, j in enumerate(['a', 'b', 'c']):  # enumerate() returns a list of tuple (index,value)   [(0, 'a'), (1, 'b'), (2, 'c')]
     print (i, j)     # i is index             # enumerate() is a global function
+
+# 5. zip
+fruits = ["apple", "banana", "cherry"]    # zip combines two or more iterables items into tuples
+colors = ["red", "yellow", "green"]       # the output is a list of tupples
+a = zip(fruits, colors)           # output: <zip object at 0x000001>
+a = list(zip(fruits, colors))      # output: [('apple', 'red'), ('banana', 'yellow'), ('cherry', 'green')]
+for fruit, color in zip(fruits, colors):    # zip is for creating a list of tuples
+	print(fruit, "is", color) 
 ```
 
 #### 4. While loop
@@ -736,7 +791,21 @@ else:     # for-else executed because no break in for
     print("Finally finished!")
 ```
 
-#### 6. Pass
+#### 6. Break, continue
+
+```py
+for i in range(5):
+    if i == 3:
+        break               # stop and break and exit the loop
+    print(i)                 # 0 1 2
+
+for i in range(5):
+    if i == 3:             # Skips the rest of the loop body for current iteration
+        continue          # Skips current iteration, continues loop
+    print(i)              # 0 1 2 4 
+```
+
+#### 7. Pass
 
 ```py
 for i in range(0, 10, 2):    # range(start, stop, step)
@@ -747,19 +816,7 @@ for i in [1,2,3,4]:
     print("Hello")
 ```
 
-
-####  zip
-```py
-fruits = ["apple", "banana", "cherry"]    # zip combines two or more iterables items into tuples
-colors = ["red", "yellow", "green"]       # the output is a list of tupples
-a = zip(fruits, colors)           # output: <zip object at 0x000001>
-a = list(zip(fruits, colors))      # output: [('apple', 'red'), ('banana', 'yellow'), ('cherry', 'green')]
-for fruit, color in zip(fruits, colors): 
-	print(fruit, "is", color) 
-```
-
 ###  packing and unpacking
-
 
 ```py
 # 1. Tuple Packing
@@ -1001,8 +1058,11 @@ print(greet("Alice"))  # Output: Hello, Alice!
 #### 1. Lambda (Anonymous) Functions
 ```py
 # useage: use them as an anonymous function inside another function
-add = lambda x, y: x + y
+add = lambda x, y: x + y             # save lambda as a variable
 print(add(2, 3))  # Output: 5
+
+a = (lambda x:x+1)(2)            # call immediately the lambda function
+print(a)                        # 3
 ```
 
 
@@ -1113,7 +1173,7 @@ def animal_factory(kind):         # factory function
     if kind == "dog":             # we have a complex logic for creating objects
         return Dog()             # 	factory function hides which class is being instantiated ---> abstraction
     elif kind == "cat":
-        return Cat()
+        return Cat()              # return a new object
     else:
         raise ValueError("Unknown animal type")
 
@@ -1121,8 +1181,36 @@ pet = animal_factory("cat")                # pet is an object of a class
 print(pet.speak())  # Meow!
 ```
 
+#### 10. Higher-order Function
 
-#### 10. Generators (Function with yield)
++ `Higher-Order Function` is a function that takes a function as an argument or returns a function as a result — or both.
++ common built-in higher-order functions: 1. map, 2. filter, 3. reduce
+
+##### 10.1. take function as argument
+```py
+def shout(text):
+    return text.upper()
+
+def whisper(text):
+    return text.lower()
+
+def speak(func, message):
+    return func(message)
+
+print(speak(shout, "hello"))   # Output: HELLO
+print(speak(whisper, "HELLO")) # Output: hello
+```
+
+#### 10.2 return a function
+
+```py
+def sum():
+    def add(x,y):
+        return x+y
+    return add               # return a function
+```
+
+#### 11. Generators (Function with yield)
 
 + useage: 1. Nested structures 2. Reading Large Files 3. infinite sequences 4. streams
 
@@ -1143,7 +1231,10 @@ for num in count_up_to(5):          # iterate over the iterator
     print(num)                      # 1 2 3 4 5
 ```
 
-#### 11. Memoization (Caching)
+
+
+
+#### 12. Memoization (Caching)
 
 + Memoization is a technique to cache function results
 + if the same inputs occur again, the function can return the stored result instead of recalculating it
@@ -1442,6 +1533,11 @@ print(obj.get_private())  # Output: I am private!
 
 
 ####  8. Abstraction
+
++ `Concrete class` is the opposite of an abstract class
++ A concrete class is a fully implemented class that you can create objects from (instantiate)
++ `concrete data type` refers to built-in data types that can hold actual values (unlike abstract types like interfaces or base classes)
+
 ```py
 from abc import ABC, abstractmethod    # In Python, interfaces are not explicitly defined
 # Abstraction means:  Hiding complex implementation details (hides bluprint) and showing only the essential features to the user. like TV remote
