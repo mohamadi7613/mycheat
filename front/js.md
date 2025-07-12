@@ -1449,6 +1449,7 @@ myDog.bark();  // "Rex says Woof!"
 ```js
 // es5
 const person = {
+
     firstName: "John",
     lastName: "Doe",
     language: "en",  // getter and setter can secure better data quality
@@ -1491,7 +1492,7 @@ class Rectangle {
 }
 
 const rect = new Rectangle(5, 10);
-console.log(rect.area); // 50
+console.log(rect.area); // 50      // area is a method but acts like a property
 
 rect.width = 8;
 console.log(rect.area); // 80

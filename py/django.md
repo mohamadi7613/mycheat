@@ -1,9 +1,6 @@
+# Django
 
-<!--write: mohamadi_arch-->
-
-
-
-# Django commands
+## Django commands
 
 ```bash
 python -m django --version            # django version
@@ -36,6 +33,7 @@ duration
 
 
 #### URLS
+
 ```py
 urlpatterns = [
     path("<article>/", views.funct),    # dynamic path segment    # without slash in the end it gets error
@@ -48,6 +46,7 @@ urlpatterns = [
 ```
 
 ## Model
+
 ```python
 #  a model is a Python class that represents a database table.
 # after creating a model: 1. make migrations 2. migrate 3. register the model in the admin file
@@ -98,6 +97,7 @@ HttpResponseNotFound("Not found")
 raise Http404("Not found")             # Debuge in stteing.py should be true in development and in production should have  a 404.html file 
 render_to_string("<div>hi</div>")               # from django.template.loader import render_to_string
 render(request, "1.html", {"age":45})        #from django.shrtcuts  import render 
+
 #######################views.py
 def BookView(request):       # Function base view 
     if request.method == "POST":
@@ -109,6 +109,7 @@ class BookView(View):
 ```
 
 #### Template VIEW
+
 ```py
 class BookView(TemplateView):    #Class base view for render a template for get method
     template_name = "1.html"       # random_name gets the template as render
@@ -186,7 +187,8 @@ a.delete()                       # delete data in db
 ```
 
 ## Accessing data
-you can use these in model or in shell
+
++ you can use these in model or in shell
 
 ```py
 Book.objects.all()                # query set of  model instances (__str__ method)
@@ -208,8 +210,8 @@ myQuery = Book.objects.filter(rating__lte=10))                        # myQuery 
 a = get_object_or_404(Book, pk=1)      # alt for get with try except ==> get data from db and if not exist return[raise] 404.html file
 ```
 
-
 ## admin
+
 ```python
 from django.contrib import admin         # from app_name.models import model_name
 from book.models import Book            # import your model from your app
@@ -220,6 +222,7 @@ class BookAdmin(admin.ModelAdmin):    # name if up to you
     list_display = ("title","author","rating","is_bestselling")       # display fileds as a column
 admin.site.register(Book, BookAdmin)     # register your model so you can import data into db using admin panel
 ```
+
 ### FORM
 
 ```py
@@ -238,6 +241,7 @@ class MyForm(forms.Form):     # 2.model form like db
         exclude = ["title"]    # do not save these fields
         labels = {"author": "Author Name"}  # override label
         error_messages = {"author": {"required": "Please enter your name", "max_length": "Name too long"}}
+
 #######validation
 def BookView(request):             # function base view
     request.POST.username                       # access post elements from frontend

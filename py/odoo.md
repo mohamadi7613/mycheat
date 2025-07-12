@@ -2,27 +2,6 @@
 
 # Odoo
 
-```bash
-sudo apt update
-sudo apt install build-essential wget git python3-pip python3-dev python3-wheel libfreetype6-dev libxml2-dev libzip-dev libssl2-dev python3-setuptools libjpeg-dev zlibig-dev libpq-dev libxslt1-dev libldap2-dev libtiff5-dev libopenjp2-7-dev
-sudo apt-get install git python3 python3-pip build-essential wget python3-dev python3-venv python3-wheel libxslt-dev libzip-dev libldap2-dev libssl2-dev python3-setuptools node-less libjpeg-dev gdebi -y
-sudo apt-get install libpq-dev libxml2-dev libxslt1-dev libldap2-dev libssl2-dev libffi-dev
-sudo pip3 install Babel decorator docutils ebaysdk feedparser gevent greenlet htmlztext linja2 lxml Mako MarkupSafe mock num2words ofxparse passlib pillow psutil psvcogreen psvcopg2 pydot pyparsing PyPDF2 pyserial python-dateutil python-openid pytz pyusb PyVAML qrcode reportlab requests six suds-jurko vatnumber vobject herkzeug XlsxWriter xlwt xlrd polib
-sudo apt install postgresql
-sudo su - postgres -c "createuser -s odoo"       # user
-sudo apt-get install xfonts-75dpi
-sudo wget https://github.com/ukhtmitox/packaging/releases/download/0.12.6-1/ukhtmitox_0.12.6-1.bionic_amd64.deb
-sudo dpkg -i ukhtmitox_0.12.6-1.bionic_amd64.deb
-sudo apt install ukhtmitcpdf
-sudo apt-get install -y npm
-sudo ln -s /usr/bin/nodejs /usr/bin/node
-sudo npm install -g less less-plugin-clean-css
-sudo npm install -g rtless
-sudo apt-get install -y node-less
-sudo python3 -m pip install libsass
-sudo apt-get install -y git
-git clone https://www.github.com/odoo/odoo --depth 1 --branch=16.0 --single-branch
-```
 
 ### start
 1. docs: https://www.odoo.com/documentation/18.0/administration/on_premise/source.html

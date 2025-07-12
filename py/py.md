@@ -7,6 +7,14 @@ https://github.com/kieranholland/best-python-cheat-sheet?tab=readme-ov-file
 https://www.pythoncheatsheet.org/
 
 
+## python version
+
+```py
+import sys
+print(sys.implementation)             # cpython
+```
+
+
 ### Primitive Data Types
 ```py
 x = 10                         # Integer
@@ -510,6 +518,58 @@ favorite_color = Color(2)          # output: Color.GREEN   # we access by value
 ```
 
 
+###  packing and unpacking
+
+```py
+# 1. Tuple Packing
+x = 1, 2, 3
+print(x)      # (1, 2, 3)
+
+# 2. Tuple unpacking
+a, b, c = (100, 200, 300)
+a, b, c = (100, 200, 300, 400)     # Error
+print(a)                        # 100
+
+# 4. unpack a tuple
+a= (1,2,3,4)
+print(*a)           # 1 2 3 4  # equivalent to print(1, 2, 3, 4)
+print(*(1,2,3,4))   # 1 2 3 4
+
+# 3. unpack a list
+a= [1,2,3,4]
+b= [4,5]
+print(*a)            # 1 2 3 4  # equivalent to print(1, 2, 3, 4)
+print([33, *b, *a])    # unpack a list   # [33, 4, 5, 1, 2, 3, 4]
+
+# unpack a set
+a= {1,2,3}
+print(*a)
+print([4,*a])
+
+# 2. unpack dictionary
+data = {"name": 1, "age": 2, "country": 3}
+print(*data)         # unpack all the keys # name age country
+print(**data)          # error   # print() function does not accept keyword arguments
+myfunc(*data)         # unpack all the keys
+myfunc(**data)         # unpack all the values
+```
+
+### Comprehension
+
++ `Comprehension` is a dynamic way to create new collections from iterables
++ basic syntax: `[expr for item in iterable if condition]` --> expr + for + if
+
+```py
+a = [x**2 for x in range(5)]                    # [0, 1, 4, 9, 16]                        # 1. List Comprehension
+a = {x**2 for x in range(5)}                    # {0, 1, 4, 9, 16}                         # 2. Set Comprehension
+a = {x: x**2 for x in range(5)}                 # {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}           # 3. Dictionary Comprehension
+g = (x**2 for x in range(5))                    # <generator object <genexpr> at 0x000001>  # 4. Generator Comprehension
+a = list(g)                                     # [0, 1, 4, 9, 16]
+evens = [x for x in range(10) if x % 2 == 0]    # [0, 2, 4, 6, 8]                            # 5. Comprehension with if
+a = [[x for x in range(3)] for y in range(3)]   # [[0, 1, 2], [0, 1, 2], [0, 1, 2]]           # 6. Nested Comprehensions
+```
+
+
 ### Date and Time
 
 ```py
@@ -550,9 +610,6 @@ a.start()      # 3            # index where match starts
 a.end()        # 6            # index where match ends
 a.span()       # (3, 6)       # tuple of start and end
 ```
-
-
-
 
 ### Memory Behavior
 + In Python, variables don’t have an associated type or size
@@ -699,7 +756,6 @@ elif a==5:
     print("a == 5")
 else:
     print("a < 5")
-
 ```
 
 ####  2. ternary operator
@@ -757,21 +813,21 @@ for item in [1, 2, 3, 4, 5]:   # iterable
 
 # 3. dict
 for k in {"name":"ali","age":45}:
-    print(k)                                 # age, name
+    print(k)                                     # age, name
 for k,v in {"name":"ali","age":45}.items():      # dict.items() returns a list of tuple (key, value)
     print(k,v)
 
 # 4. enumerate
-for i, j in enumerate(['a', 'b', 'c']):  # enumerate() returns a list of tuple (index,value)   [(0, 'a'), (1, 'b'), (2, 'c')]
+for i, j in enumerate(['a', 'b', 'c']):       # enumerate() returns a list of tuple (index,value)   [(0, 'a'), (1, 'b'), (2, 'c')]
     print (i, j)     # i is index             # enumerate() is a global function
 
 # 5. zip
-fruits = ["apple", "banana", "cherry"]    # zip combines two or more iterables items into tuples
-colors = ["red", "yellow", "green"]       # the output is a list of tupples
-a = zip(fruits, colors)           # output: <zip object at 0x000001>
-a = list(zip(fruits, colors))      # output: [('apple', 'red'), ('banana', 'yellow'), ('cherry', 'green')]
+fruits = ["apple", "banana", "cherry"]       # zip combines two or more iterables items into tuples
+colors = ["red", "yellow", "green"]          # the output is a list of tupples
+a = zip(fruits, colors)                      # output: <zip object at 0x000001>
+a = list(zip(fruits, colors))               # output: [('apple', 'red'), ('banana', 'yellow'), ('cherry', 'green')]
 for fruit, color in zip(fruits, colors):    # zip is for creating a list of tuples
-	print(fruit, "is", color) 
+	print(fruit, "is", color)               # zip() is a global function
 ```
 
 #### 4. While loop
@@ -816,48 +872,56 @@ for i in [1,2,3,4]:
     print("Hello")
 ```
 
-###  packing and unpacking
+
+### functions
+
+
+#### parameter vs argument
 
 ```py
-# 1. Tuple Packing
-x = 1, 2, 3
-print(x)      # (1, 2, 3)
+def greet(name):    # ← name is a parameter     ---> define
+    print("Hello", name)
 
-
-# 2. Tuple unpacking
-a, b, c = (100, 200, 300)
-print(a)  
-
-# 4. unpack a tuple
-a= (1,2,3,4)
-print(*a)           # 1 2 3 4  # equivalent to print(1, 2, 3, 4)
-
-
-# 3. unpack a list
-a= [1,2,3,4]
-b= [4,5]
-print(*a)            # 1 2 3 4  # equivalent to print(1, 2, 3, 4)
-print([33, *b, *a])    # unpack a list   # [33, 4, 5, 1, 2, 3, 4]
-
-# unpack a set
-a= {1,2,3}
-print(*a)
-print([4,*a])
-
-# 2. unpack dictionary
-data = {"name": 1, "age": 2, "country": 3}
-print(*data)         # unpack all the keys # name age country
-print(**data)          # error   # print() function does not accept keyword arguments
-
-# unpack a dictionary
-def info(name, age, country):
-    print(name, age, country)
-data = {"name": "ali", "age": 30, "country": "India"}
-info(**data)    # ali 30 India
-info(*data)    # name age country
+greet("Alice")      # ← "Alice" is an argument  ---> call
 ```
 
-### *args and **kwargs
+#### defult values
+```py
+def func(a=10, b=20, c=30):
+    print(a, b, c)
+
+func()           # the only way that number of arguments can be less than required
+func(1)          # a=1
+func(1,2,3,4)    # error
+```
+
+#### Calling functions
+
+```py
+def order_food(side, drink, main="Pizza"):                    # default values should be at the end otherwise we get error
+    print(f"Main: {main}, Side: {side}, Drink: {drink}")
+    
+order_food("Burger", "Fries", "Coke")                  # Positional calling (exact order and exact number of arguments(Required))
+order_food(main="Burger", side="Fries", drink="Coke")  # Keyword calling (we can change the order)
+order_food("Fries","Coke")              # keyword calling:  explicitly naming the parameters, instead of relying on their position.
+order_food("s",side="ds")            # Error: got multiple values for argument 'side'
+order_food(side="ds","s")            # Error:  positional argument follows keyword argument
+```
+
+#### packing arguments
+
+```py
+def myfunc(name, age, country):
+    print(name, age, country)
+
+mydict = {"name": "ali", "age": 30, "country": "India"}
+mylist = [1 ,2 ,3]
+myfunc(*mylist)             # 1 2 3
+myfunc(*mydict)             # name age country
+myfunc(**mydict)             # ali 30 India
+```
+
+#### *args and **kwargs
 + *args and **kwargs are called `Variable-Length Arguments`  or `Arbitrary Arguments`
 
 ```py
@@ -887,53 +951,20 @@ def pack_args(*args,**kwargs):        # args and kwargs are used for packing fun
 pack_args(45, 44, name="Ali", age=30)    # unnamed args should become first
 
 # 4. args, kwargs, normal arguments
-def pack_args(a, b=10, *args,name="default", age=10, **kwargs):
+def pack_args(a, b=10, *args, name="default", age=10, **kwargs):
     print(args)                    # normal args should be before *args
     print(kwargs)                  # normal kwargs should be before **kwargs
     print(a, b)                     # *args and **kwargs do not have default values --> () {}
     print(name, age)
 
+pack_args(1,2)                                  # a=1, b=2
 pack_args(1,2,3,4)                                # a=1, b=10, args=(3, 4), name='default', age=10, kwargs={}
+pack_args(1,2,3,4,5,6,7)                                # a=1, b=10, args=(3,4,5,6,7), name='default', age=10, kwargs={}
 pack_args(1,2,3,4, year=30, name="Ali")             # a=1, b=2, args=(3, 4), name='Ali', age=10, kwargs={'year': 30}
-
-# 5. Unpacking *args and **kwargs
-def func(a, b, c):
-    print(a, b, c)
-
-args = (1, 2, 3)
-func(*args)  # Equivalent to func(1, 2, 3)
-
-kwargs = {"a": 1, "b": 2, "c": 3}
-func(**kwargs)  # Equivalent to func(a=1, b=2, c=3)
 ```
 
 
-
-### functions
-
-#### defult values
-```py
-def func(a=10, b=20, c=30):
-    print(a, b, c)
-
-func()           # the only way that number of arguments can be less than required
-func(1)          # a=1
-func(1,2,3,4)    # error
-```
-
-#### Calling functions
-
-```py
-def order_food(side, drink, main="Pizza"):                    # default values should be at the end otherwise we get error
-    print(f"Main: {main}, Side: {side}, Drink: {drink}")
-    
-print(order_food("Burger", "Fries", "Coke"))                  # Positional calling (exact order and exact number of arguments(Required))
-print(order_food(main="Burger", side="Fries", drink="Coke"))  # Keyword calling (we can change the order)
-print(order_food("Fries","Coke"))                               # Positional calling
-```
-
-
-#### 0. Special Cases (Keyword-Only Arguments)
+#### 0. Special parameters (Keyword-Only Arguments)
 ```py
 def func(a, b, *, option=True):  # Everything after `*` must be a keyword argument
     pass
@@ -942,7 +973,7 @@ func(1, 2, option=False)  # Valid
 func(1, 2, False)         # Error (must use `option=False`)
 ```
 
-#### 0. Special Cases (Positional-Only Arguments)
+#### 0. Special parameters (Positional-Only Arguments)
 ```py
 def func(a, b, /, c):  # `a` and `b` must be positional
     pass
@@ -989,7 +1020,6 @@ def add_item(lst):
 my_list = [1, 2, 3]           # list, dict, set, bytearray are mutable
 add_item(my_list)
 print(my_list)  # Output: [1, 2, 3, 4]
-print(id(my_list))  # Output: 140535870160448         # id() is a global function that prints the address of an object
 
 # 2. immutable
 def set_to_five(x):
@@ -998,7 +1028,6 @@ def set_to_five(x):
 a = 10                       # int, float, str, NoneType, bool, bytes, tuple, frozenset are immutable
 set_to_five(a)
 print(a)  # Output: 10
-print(id(a))  # Output: 140535870160448         # id() is a global function that prints the address of an object
 ```
 
 ###### 4. Prevent Call-by-Reference Behavior
@@ -1019,7 +1048,7 @@ def stats(numbers):
     return max(numbers), min(numbers), sum(numbers) / len(numbers)
 
 a = stats([1, 2, 3])             # a is a tuple
-print(a)  # Output: (3, 1, 2.0)   #  return a tuple
+print(a)                           # Output: (3, 1, 2.0)   #  return a tuple
 maximum, minimum, average = stats([1, 2, 3, 4, 5])     # unpack a tuple
 print(maximum, minimum, average)  # Output: 5 1 3.0
 ```
@@ -1031,7 +1060,7 @@ def sum(a,b):
     pass         # do nothing just pass
 
 def func():           # Ellipsis is often used as a placeholder for code to be implemented in future
-    ...
+    ...               # Ellipsis is a punctuation mark consisting of a series of three dots
 
 print(...)         # Output: Ellipsis
 print(type(...))   # <class 'ellipsis'>
@@ -1044,6 +1073,7 @@ def greet(name):
     return f"Hello, {name}!"
 
 print(greet.__doc__)  
+print(greet.__globals__)                   # list of all dunder methods with their values
 ```
 
 ####  4. Function Annotations
@@ -1051,7 +1081,13 @@ print(greet.__doc__)
 def greet(name: str="default value") -> str:    # int, float, str, bool, list, tuple, dict, set
     return f"Hello, {name}!"
 
-print(greet("Alice"))  # Output: Hello, Alice!
+print(greet("Alice"))                        # Output: Hello, Alice!
+print(greet.__annotations__)                 # {'name': <class 'str'>, 'return': <class 'str'>}
+
+# Variable Annotations
+x: int = 10
+y: str = "hello"
+print(__annotations__)          # {'x': <class 'int'>, 'y': <class 'str'>}  # Works in module scope
 ```
 
 
@@ -1070,9 +1106,9 @@ print(a)                        # 3
 ####  6. global variables
 ```py
 x = 10  # Global
-def modify_var():
-    global x  # Use global keyword to modify
-    x = 20       # change the global variable
+def modify_var():        # we cannot have both a global and local variable with the same name in the function
+    global x               # Use global keyword to modify
+    x = 20               # change the global variable
 
 modify_var()
 print(x)  # Output: 20
@@ -1089,19 +1125,19 @@ def outer_function():
 
 outer_function()
 inner_function()                   # Error
+print(outer_function.__closure__)         # None
 ```
 
 ####  7. clouser
 
 + `closure` is created when a nested function `remembers` and uses variables from its enclosing function — even after the outer function has finished executing.
 
-
 ```py
 def outer_function(text):    
     a = 1
     def inner_function():
-        print(text, a)            # nested function access to outer function
-    return inner_function          # instead of calling we can return the inner function
+        print(text, a)            # nested function access to outer variables
+    return inner_function          # instead of calling we should return the inner function
 
 closure_function = outer_function("Hello")   # outer function retains variables since they will used in inner function
 closure_function()  # Output: Hello, 1
@@ -1110,14 +1146,14 @@ closure_function()  # Output: Hello, 1
 
 #### 8. decorator
 
-+ `Decorator` is a function that modifies the behavior of another function or method — without changing its code directly.
++ `Decorator` is a function that `modifies` the behavior of another function or method — without changing its code directly.
 + `Decorator` is a function that takes another function as input and returns a new function with extended or altered behavior
 + Imagine a decorator as a wrapper around a gift
-+ we have class based and function based decorators
++ we can create decorators in two ways: 1. function based decorator 2. class based decorator
 + use cases: 1. logging 2. timing 3. caching
 
 ```py
-def mydecorator(func):
+def mydecorator(func):                     # decorator takes another function as input
     print(func)                             # <function say_hello at 0x0000022D1BEA9260>
     def wrapper(*args, **kwargs):           
         print(args, kwargs)                   # (1, 2) {'name': 'default'}
@@ -1194,8 +1230,8 @@ def shout(text):
 def whisper(text):
     return text.lower()
 
-def speak(func, message):
-    return func(message)
+def speak(func, message):      # takes a function as an argument
+    return func(message)        # returns a function as a result
 
 print(speak(shout, "hello"))   # Output: HELLO
 print(speak(whisper, "HELLO")) # Output: hello
@@ -1204,7 +1240,7 @@ print(speak(whisper, "HELLO")) # Output: hello
 #### 10.2 return a function
 
 ```py
-def sum():
+def sum():                    # this is a factory function
     def add(x,y):
         return x+y
     return add               # return a function
@@ -1233,7 +1269,6 @@ for num in count_up_to(5):          # iterate over the iterator
 
 
 
-
 #### 12. Memoization (Caching)
 
 + Memoization is a technique to cache function results
@@ -1256,7 +1291,6 @@ else:
 finally:
     print("Always executed")  # Always executed
 ```
-   
 
 ### File Handling
 
@@ -1269,9 +1303,9 @@ file.write("Hello, World!\n")        # Writes a string to the file
 file.close()                        # closes the file
 
 # 2. Reading from a file
-file = open("output.txt", "r")
+file = open("output.txt", "r+")       # open is a global function
 contents = file.read()    # Reads the contents of a file
-print(contents)
+print(contents)            # r+ means read and write (r+w)
 file.close()
 
 # 3. With statement
@@ -1279,8 +1313,7 @@ with open('input.txt', 'r') as file:     # with statement automatically close th
     lines = file.readlines()           # Read all lines and store them in a list
     for line in lines:           # Print the content of the file
         print(line.strip())      # strip() removes the trailing newline character
-# File is automatically closed here
-
+# File is automatically closed here          # with + as
 
 # 4. With statement
 with open('output.txt', 'w') as file:
@@ -1293,6 +1326,7 @@ with open('output.txt', 'w') as file:
 
 ```py
 import sys               # run this file with:   "script.py arg1 arg2"
+arg0 = sys.argv[0]       # name of the script file 
 arg1 = sys.argv[1]       # sys.argv is a list that contains command-line arguments
 arg2 = sys.argv[2]
 print("Argument 1:", arg1, "Argument 2:", arg2)
@@ -1303,7 +1337,7 @@ print("Argument 1:", arg1, "Argument 2:", arg2)
 ##### 1. import libraries
 
 ```py
-import math               # import entire module
+import math                        # import entire module
 import numpy as np                # import module with alias
 from math import sqrt, pi, exp    # import specific functions
 from math import *                # import all functions  (not recommended)
@@ -1325,8 +1359,8 @@ from tools.utils import greet    # from 'folder_name.file_name' import 'function
 ```css
 my_project/
 │
-├── main.py
-└── tools/                    /* __init__.py is empty file*/
+├── main.py                  /* __init__.py marks a directory as a Python package */
+└── tools/                    /* __init__.py  It can be empty or contain Python code, and it's executed when the package is imported */
     ├── __init__.py           /* __init__.py is used to create a package */
     └── helper.py              /* help() is inside this file */
     └── utils.py              /* greet() is inside this file */
@@ -1334,24 +1368,38 @@ my_project/
 
 ```py
 from tools import *                     #  Wrong: we can not use any function by this way
-from tools.helper import help          # help()
+from tools.helper import help          # help()       # when we import these __init__.py will be executed
 from tools import utils              # utils.greet()
 ```
 
-##### 4. Using __all__ to Control Exports
+##### 4. control exports
 
 ```py
 # utils.py
-__all__ = ['foo']
-def foo(): 
+__all__ = ['foo']           # __all__ is used to define the public interface of a module
+def foo():                  # __all__ limits `import *`
     print("foo")
 def _hidden():
     print("hidden")
 
 # main.py
-from utils import *          # foo() and _hidden()
+from utils import *          # foo() imported but _hidden() not
 ```
 
+##### 5. Special Variables
+
++ `__name__` is a `built-in special variable` which is dunder method (magic method)
++ __name__ evaluates to the name of the current module.
++ we use ` __name__ == "__main__"` to run the code only when the script is executed directly, not when imported.
+
+```py
+print(__name__, type(__name__))          #  '__main__' if run directly    # <class str>
+print(__file__)           # Current file path
+print(__doc__)           # current files's docstring (None if not set)
+print(__package__)        # package name of a module (folder name)
+print(__builtins__)       # <module 'builtins' (built-in)>   
+a = __builtins__.len("123")   # __builtins__ is a  dictionary that provides access to Python's built-in functions
+```
 
 ### os
 
@@ -1375,20 +1423,27 @@ class Person:                       # Define a class
     def greet(self):
         print(f"Hello, my name is {self.name} and I am {self.age} years old.")
 
-p1 = Person("Ali", 38)     # Create instance
+    def __del__(self):                # __init__ is constructor and __del__ is destructor    # usage: closing a file in the class
+        print("Cleaning up...")       # Not guaranteed to run immediately when del obj is called
+
+p1 = Person("Ali", 38)                      # Create instance
+p2 = Person(age=23, name ="Ahmad")     # keyword calling
 print(p1)                     # <__main__.Person object at 0x000001C9B9B9D0A0>
 print(type(p1))                 # <class '__main__.Person'>
 print(Person)                       # <class '__main__.Person'>
 print(type(Person))                 # <class 'type'>
 print(p1.name)                   # access attributes   # Ali
 p1.greet()                  # call methods
+print(p1.__dict__)            # {'name': 'Ali', 'age': 38}        #  Inspecting an Object's Attributes
 ```
+
 
 ####  2. Static 
 
 ###### 2.1 static property
+
 ```py
-class MyClass:
+class MyClass():                                    # using pranteses is optianl
     class_attribute = "I belong to the class!"    # Class attribute (shared by all instances)
     def __init__(self, instance_attribute):        # Constructor
         self.instance_attribute = instance_attribute   # statics do not depend on any object instance
@@ -1397,7 +1452,9 @@ a = Myclass("name")
 print(a.class_attribute)                       # I belong to the calss
 print(Myclass.class_attribute)                 # I belong to the class
 ```
+
 ###### 2.2 static method 
+
 ```py
 class MyClass:
     class_attribute = "I belong to the class"                  # static property
@@ -1431,30 +1488,69 @@ class Myclass:
         self.name = name
 
 print(Myclass.__doc__)              # like static
+print(help(Myclass))               # more detailed
 ```
 
+###### 2.4 class Annotations
+```py
+class Person:
+    name: str          # Class variable annotation                # we cant print this one
+    age: int = 0       # Class variable with default value
+    
+    def __init__(self, name: str, age: int) -> None:
+        self.name = name  # Instance variable (type inferred from parameter)
+        self.age = age
 
-####  3. Dunder methods
+print(Person.__annotations__)
+```
+
+###### 2.5 Inspect Names in a Namespace
+```py
+class Example:           # dir() lists all attributes/methods, including `x`
+    def __init__(self):  
+        self.x = 10
+
+print(dir(Example())) # output:   ['__class__', '__dict__', '__dir__', '__doc__', '__eq__' ...] 
+```
+
+####  3. Dunder methods in oop
 ```py
 class Person:                         # “Dunder” is short for “double underscore”
     def __init__(self, name, age):   # Dunder methods also called magic methods or special methods
         self.name = name             # Dunder methods allows you to customize the behavior of Python objects
         self.age = age
 
-    def __str__(self):                # Custom string representation
-        return f"{self.name}, {self.age} years old"
+    def __str__(self):                              # Custom string representation for instance --> should return a string
+        return f"{self.name}, {self.age} years old"     # print(Person("ali", 12))      # defult : <__main__.Person object at 0x00>
+
+    def __repr__(self):                # JJJ
+        return "repr called"
+
+    def __call__(self, x):           # __call__ allows an instance of a class to be called like a function
+        return x * 2
 
     def __add__(self, other):      # Overload + operator
         return self.age + other.age
+    
+    def __new__(cls, *args, **kwargs):  # responsible for creating instances before __init__ is called
+        print("__new__ called")
+        return super().__new__(cls)
+
+    def __del__(self):                 # destructor
+        print("__del__ called")
 
     def __len__(self):                 # customise len() method when len(obj)
     def __getitem__(self):               # Indexing like a list or dict when obj[key]
     def __setitem__(self):              # Assign a key when obj[key]=value
+    def __delitem__(self):             # Enables deletion of items with del obj[key] syntax
 
 p1 = Person("Alice", 30)
 p2 = Person("Bob", 25)
+print(repr(p1))  # Uses __repr__        # repr() is a global function
+print(str(p2))   # Uses __str__
 print(p1)               # Output: Alice, 30 years old
 print(p1 + p2)          # Output: 55
+print(p1(10))           # Output: 20             # __call__ like a function
 ```
 
 ### 4. NotImpelemented
@@ -1467,6 +1563,7 @@ class MyClass:                        #  NotImplemented
 
 
 ####  5. Single Inheritance
+
 ```py
 class Parent:
     def greet(self):
@@ -1480,6 +1577,7 @@ child = Child()
 print(child.greet())  # Hello from Child
 ```
 ####  6. Multiple Inheritance
+
 ```py
 class A:
     def method_a(self):
@@ -1498,6 +1596,7 @@ print(obj.method_b())  # Output: B method
 ```
 
 ####  5. Super 
+
 ```py
 class Parent:
     def greet(self):
@@ -1513,6 +1612,9 @@ print(child.greet())  # Output: Hello from Parent. And hello from Child!
 ```
 
 ####  6. Encapsulation
+
++ `name mangling`: when you define a variable with double underscore in a class, python "mangles" the name internally to `-Classname__variablename`
+
 ```py
 class EncapsulationExample:   # Python doesn't have true access modifiers like public, protected, and private like Java
 # Encapsulation means: bundling data and methods that operate on the data while restricting access
@@ -1521,14 +1623,29 @@ class EncapsulationExample:   # Python doesn't have true access modifiers like p
         self._protected = "I am protected!"         # protected means accessible within the class and its subclasses
         self.__private = "I am private!"          # private means accessible only within the class
 
-    def get_private(self):
-        return self.__private
+    def get_private(self):                  # get_private() is a public method
+        return self.__private                # this is a getter functionn for __private variable
+        
+    def public_method(self):                # public_method() is a public method
+        print("I am public!")
+
+    def _protected_method(self):            # _protected_method() is a protected method
+        print("I am protected!")
+
+    def __private_method(self):             # __private_method() is a private method
+        print("I am private!")
 
 obj = EncapsulationExample()
 print(obj.public)       # Output: I am public!
 print(obj._protected)   # Output: I am protected!
 print(obj.__private)     # AttributeError: object has no attribute '__private'
 print(obj.get_private())  # Output: I am private!
+print(obj._EncapsulationExample__private)    # Output: I am private!      # using name mangling
+
+obj.public_method()
+obj._protected_method()        # executes but with warning in editor
+obj.__private_method()       # AttributeError: object has no attribute '__private_method'
+obj._EncapsulationExample__private_method()        #  works via name mangling
 ```
 
 
@@ -1563,7 +1680,7 @@ print(dog.speak())  # Output: Woof!
 
 ```py
 class Animal:                      # Polymorphism means:   "Same interface, different behavior"
-    def speak(self):
+    def speak(self):               # we can define Animal as an interface
         return "Some sound"
 
 class Cow(Animal):
@@ -1582,30 +1699,71 @@ print(b.speak())
 
 
 ####  9. Getter and Setter
+
++ getters and setters are used to `access and modify private members` safely.
++ They are a form of encapsulation since they hide internal representation of data.
++ They validate and provide controlled access to data (encapsulation).
++ Python encourages using `@property` instead of explicit getters/setters for cleaner syntax.
+
+```py
+class Person:
+    def __init__(self, name, age):
+        self.__name = name                # Private attribute (conventionally prefixed with __)
+        self.__age = age
+
+    def get_name(self):
+        return self.__name
+
+    def set_name(self, name):
+        if isinstance(name, str) and len(name) > 0:           # validation
+            self.__name = name
+        else:
+            print("Invalid name. Name must be a non-empty string.")
+
+    def get_age(self):
+        return self.__age
+
+    def set_age(self, age):
+        if isinstance(age, int) and age >= 0:
+            self.__age = age
+        else:
+            print("Invalid age. Age must be a non-negative integer.")
+
+person = Person("Alice", 30)     # calls constructor and not setter methods
+print(person.get_name())  # Output: Alice          # call getter method for accessing private attribute
+person.set_name("Bob")               # set new value by setter
+print(person.get_name())  # Output: Bob  
+person.set_age(-5)       # Output: Invalid age. Age must be a non-negative integer.
+print(person.get_age()) # Output: 30
+```
+
+####  10. Getter and Setter in pythonic way
+
 ```py
 class Rectangle:
     def __init__(self, width, height):
-        self._width = width
-        self._height = height
+        self.__width = width                 # private variable
+        self.__height = height
 
     @property              # @property is a built-in decorator that makes method behave like an attribute
-    def area(self):
-        return self._width * self._height
+    def area(self):                           # area is a dynamic read-only property (no setter)
+        return self.__width * self.__height
 
-    @property
-    def width(self):
-        return self._width
+    @property                          # Getter for width
+    def width(self):                   # we can access width without using the double underscore 
+        return self.__width             # we can write a getter for height also
 
-    @width.setter
-    def width(self, value):
-        if value <= 0:
+    @width.setter                      # @<name>.setter
+    def width(self, value):             # setter for width        # we can define a setter for height also
+        if value <= 0:                  # in setter function we should validate the value
             raise ValueError("Width must be positive!")
-        self._width = value
+        self.__width = value
 
 rectangle = Rectangle(10, 5)
-print(rectangle.area)  # Output: 50
-rectangle.width = 20
-print(rectangle.area)  # Output: 100
+print(rectangle.area)  # Output: 50       # area is a property (a method that used @property)
+print(rectangle.width)  # Output: 10    # call getter and we accessed without using the property (__width)
+rectangle.width = 20  # call setter
+print(rectangle.area)  # Output: 100    # area updated via width change
 ```
 
 #### 10. Class-Based Decorator
@@ -1624,6 +1782,45 @@ class MyDecorator:
 @MyDecorator
 def greet():
     print("Hello!")
+```
+
+#### 11. Operator overlaoding
+
+```py
+# --- 1. Math Operators ---
+class MyNumber:
+    def __init__(self, value):
+        self.value = value
+
+    def __add__(self, other):                    # customise + operator
+        return self.value + other.value + 100
+
+    def __mul__(self, other):                    # customise * operator
+        return self.value * other.value * 100
+
+    def __str__(self):
+        return str(self.value)
+
+n1 = MyNumber(2)
+n2 = MyNumber(3)
+print(n1 + n2)  # __add__
+print(n1 * n2)  # __mul__
+
+# --- 2. Comparison Operators ---
+class Compare:
+    def __init__(self, value):
+        self.value = value
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+c1 = Compare(5)
+c2 = Compare(10)
+print(c1 == c2)  # __eq__
+print(c1 < c2)   # __lt__
 ```
 
 ### errors and exceptions
