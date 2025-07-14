@@ -1,11 +1,23 @@
 # Django
 
+
+## Install django
+
+```bash
+python -m venv myvenv          # create a virtual env named myvenv
+myvenv/bin/activate            # activate virtual env in windows
+source myvenv/bin/activate     # activate virtual env in linux
+pip install django              # we can install django globally or in a virtual env
+```
+
+
 ## Django commands
 
 ```bash
+pip install django                    # its better to use virtual env for installing instead of globall instalation
 python -m django --version            # django version
 django-admin                         # make sure django is installed
-django-admin startproject myfolder  # first command for create a folder project
+django-admin startproject myproj          # first command for create a folder project (do not use dash)
 python manage.py startapp IMDB_app        # create app (we can have multiple apps inside main project) [add this "IMDB_app" in INSTALLED_APPS]
 python manage.py runserver                # start server
 python mange.py makemigrations            # run this when change the structure of models [method no req] (convert model into sql query)
@@ -29,38 +41,45 @@ duration
 2. staff status: you can see admin panel   ===> staff member
 3. superuser status: you can edit the admin panel
 
-# Django code
+## Django code
 
 
-#### URLS
 
-```py
-urlpatterns = [
-    path("<article>/", views.funct),    # dynamic path segment    # without slash in the end it gets error
-    path("<str:article>", views.func),    # path convertor ==> func(req, article)
-    path("<slug:article>", views.special_case_2003),    # slug foramt
-    path("number<int:article>", views.special_case_2003, name="articles"),    # named url
-    path("",views.BookView.as_view(), name="articles"),    # if you use classBase views you need as_view() function
-    path("suburl/",include("app.urls"))      # specifiy suburl and import another URLconf module
-]
-```
+## 1. Model
 
-## Model
++ `Model` is a Python class that represents a database table
++ after creating a model: 1. make migrations 2. migrate 3. register the model in the admin file
++ how to register: `admin.site.register(Book)`
 
 ```python
-#  a model is a Python class that represents a database table.
-# after creating a model: 1. make migrations 2. migrate 3. register the model in the admin file
-# how to register: admin.site.register(Book)
-class Book(models.Model):      # inherit from models.Model
-    title = models.CharField(max_length=50, null=False, blank=Ture, editable=False)   # max_length is required
-    # blank is used for charFiled which means 'empty string' in forms of frontend can be accepted
-    # null is used for dateFiled which means can be null porgramatically in db (but still required in forms)
-    # None means absense of a value
-    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)]) # validators
-    is_bestselling = models.BooleanField(default = False)
-    slug = models.SlugField(default ="", db_index=True, unique=True)  # slug HarryPotter ==> harry-potter db_index make it faster
-    date = models.DateField(auto_now=True)               # auto_now (every time update) and auto_now_add (just add)
-    id = models.AutoField()                                                                     # primary key
+class Book(models.Model):                # inherit from models.Model
+
+    # 1. Common Field Types
+
+    title = models.CharField(max_length=100)                        # max_length is required for charField
+    description = models.TextField()                                      # TextField is for long text and not limited by default
+    numbers = models.IntegerField()                         # -2,147,483,648 to 2,147,483,647   # 32-bit signed integer (2^31 - 1)
+    numbers = models.PositiveIntegerField()                 # values from 0 to 2,147,483,647
+    numbers = models.SmallIntegerField()                    # values from -32,768 to 32,767    # 2^16 - 1    # PositiveSmallIntegerField()
+    numbers = models.BigIntegerField()                      # values from -9,... to 9,223,372,036,854,775,807  # PositiveBigIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)      # up to 10 digit, 2 decimal ---> 999.99, 77777.99
+    is_bestselling = models.BooleanField(default = True)              # default value for boolean filed is False in djagno by default
+    created_at = models.DateTimeField(auto_now_add=True)              # timestamps as Python datetime.datetime objects
+    # auto_now_add= True ----> automatically set to the current time when the object is created
+    # auto_now= True ------> automatically  set to the current time when the object is updated
+    # if you set auto_now_add or auto_now, they shouldn't be included in ModelForms
+    birthday_date = models.DateField()
+    opening_time = models.TimeField()
+    email = models.EmailField(max_length=300)                   # it has Automatic validation and Default max length is 254 characters
+    url = models.URLField(max_length=300)               # it has Automatic validation and default max length is 200
+    slug = models.SlugField()                           # slug HarryPotter ==> harry-potter  # allowed: letters + numbers + dash + underscore
+    file = models.FileField(upload_to='uploads/')
+    img = models.ImageField(upload_to='uploads/')
+
+    # 2. Relational Fields
+
+    id = models.UUIDField(default=uuid.uuid4, editable=False)     # non-sequential, unique identifiers in 32 char can be used as primary key
+    id = models.AutoField()                             #  Special IntegerField that auto-increments start with 1 (used for primary keys)
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="books")          # many to one (one book can have one author)
     address = models.OneToOneField(Address, on_delete=models.CASCADE)                            # one to one  
     country = models.ManyToManyField(Country)                                                    # do not need on_delete
@@ -68,6 +87,41 @@ class Book(models.Model):      # inherit from models.Model
     # we do not need related_name in onetoone, it create automatically by djagno
     # on_delete options: 1. models.protect, 2. models.SET_NULL 3. models.SET_DEFAULT 4. models.CASCADE 5. models.SET(0)
     # on_delete for author means: delete all books that has this author
+
+    # 3. Field Options
+
+    title = models.CharField(max_length=100, null=False, blank=False)           # max_length is required for charField
+    default = ''             # empty string is default value of CharField, TextField, EmailField, URLField, SlugField
+    default = None           # None is default value for lots of Field Types like DateField, IntegerField, etc.
+    null = True               # if you don't specify a defult value or don't set null=True, Django will raise an error
+    blank = True              # blank means field can be blank and empty string is accepted in forms in frontend
+    null = False               # null means field can be null porgramatically in db
+    editable = True            # editable means field can be editable in admin panel
+    unique = True              # unique means field must be unique in db
+    db_index = True              # db_index creates index in db to make it faster
+    verbose_name = "Book Name"   # verbose_name is used in admin panel 
+    help_text="Enter your name"     # help_text is used in admin panel as a placeholder of forms
+    choices=[('male', 'Male'), ('female', 'Female'), ('other', 'Other')]         # choices is used in forms
+
+    # 4. validators
+
+    from django.core.validators import MinValueValidator, MaxValueValidator
+    rating = models.IntegerField(
+        default=100,
+        max_length=4,
+        validators=[
+            MinValueValidator(3),                                           # length validators
+            MaxValueValidator(4),                                             # validate numbers and strings
+            RegexValidator(r'^[0-9]+$', message="Only digits are allowed")   # regex validator
+            FileExtensionValidator(['pdf', 'docx'])                          # file validators
+            MinValueValidator(date(1900, 1, 1)),                             # date validator
+            MaxValueValidator(date.today())                                   # date validator
+        ]
+    ) 
+    
+
+
+
 
     def __str__(self):                      # define method for print object from this class in console
         return f"{self.title} - {self.rating}"      # by defualt: Book object(1)
@@ -84,6 +138,28 @@ class Book(models.Model):      # inherit from models.Model
         verbose_name_plural = "Address Entries"   # override plural name
     
 ```
+
+#### URLS
+
++ Inside the app folder (IMDB_app), create a file called urls.py
+
+```py
+# IMDB_app/urls.py
+urlpatterns = [
+    path("<article>/", views.funct),    # dynamic path segment    # without slash in the end it gets error
+    path("<str:article>", views.func),    # path convertor ==> func(req, article)
+    path("<slug:article>", views.special_case_2003),    # slug foramt
+    path("number<int:article>", views.special_case_2003, name="articles"),    # named url
+    path("",views.BookView.as_view(), name="articles"),    # if you use classBase views you need as_view() function
+    path("suburl/",include("app.urls"))      # specifiy suburl and import another URLconf module
+]
+# myproj/urls.py
+urlpatterns = [
+    path("",views.BookView.as_view(), name="articles"),
+]
+```
+
+
 #### VIEWS
 
 ```py

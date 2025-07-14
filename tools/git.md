@@ -179,9 +179,11 @@ git rm -r -f bin\               # Unstage and delete directory
 + when you edit an untracked file or delete a file --> use `Local History extenstion`
 
 ```bash
-git rm -f 1.js                        # git restore 1.js ==> unstage the deleted file ==> useful before commit the deleted file
-git reset --hard HEAD                   # Discard all local changes
+git restore 1.js                        # unstage the deleted file after "git rm -f 1.js" ==> useful before commit the deleted file
+git commit --amend                      # Change the last commit that hasn't been pushed yet
 git checkout HEAD 1.js                  # Discard changes in specific file
+git checkout efj3d 1.js                  # Checkout old version for one file
+git reset --hard HEAD                   # Discard all local changes
 git reset --hard upstream/master         # Reset to remote branch state
 git reset --hard head~2                 # git branch newname e54en ==> you can find commitId in reflog or git log -g
 ```
@@ -203,7 +205,7 @@ git commit --fixup 5720fdf -m "message"                # Merge into the specifie
 ```
 
 
-## split commits
+### 1. split commits
 
 ```
 WD                         SA                      L                           R
@@ -235,7 +237,7 @@ git reset --hard e5b2h4                       # Split nodes from this commit and
 git reset Head~3                              # we can use HEAD like commitID
 ```
 
-## undo commits
+### 2. undo commits
 
 + `git revert` is a safe, non-destructive Git command
 + `git revert` undos every chanes in every files in a commit
@@ -249,7 +251,7 @@ git reset 57cbe4a              # split all commits and rewrite history
 git show 5720fdf                        # see changes of specfic commit (github has a nice dashboard UI)
 ```
 
-## edit commits
+### 3. edit commits
 
 + `git rebase -i` is a command that rewrites commit history before pushing and sharing with others
 + interactive means there is some steps interactively that we should do
@@ -291,7 +293,7 @@ git reflog                             # we have 3 commits 1. rebase end 2. reba
 git reset --hard ghi9012               # Reset to the pre-rebase commit (before start)
 ```
 
-## cherry-pick
+### 4. cherry-pick
 
 + `git cherry-pick` is a command that copies a specific commit changes from one branch and applies it to current branch
 + by defult cherry-pick creates a new commitId with the same "commit message" since it copy the commit.
@@ -312,7 +314,7 @@ git cherry-pick --abort                        # abort the cherry-pick
 ```
 
 
-## log
+### log
 
 ```bash
 git reflog                               #  tracks all changes in all branches made to the HEAD [commits, rebases, resets, checkouts, and merges] 
@@ -342,7 +344,7 @@ git show --stat eh6d7s                 # with a compact view
 git blame file.txt                      # See who changed each line and when
 ```
 
-## Git Graph
+#### Git Graph
 
 + A Git graph is a visual representation of a repository's `commit history`
     1. Commits (nodes)
@@ -658,6 +660,13 @@ git grep "foo"                                 # Search for text in all files
 git grep "foo" v2.5                              # Search in specific version
 git log -S 'foo'                               # find commits with 'foo' in their commit messages
 git log -S 'foo' --pickaxe-regex               # seacrh with regex
+```
+
+## Shortcuts
+
+```bash
+git config --global alias.lg "log --oneline --graph --decorate --all"            # lg ----> Pretty commit graph
+git config --global alias.st status                                              # st ---> git status
 ```
 
 ## Submodules
