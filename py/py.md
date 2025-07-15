@@ -1066,6 +1066,24 @@ print(...)         # Output: Ellipsis
 print(type(...))   # <class 'ellipsis'>
 ```
 
+#### async/await
+
+```py
+import asyncio
+
+async def fetch_data():
+    print("Start fetching")
+    await asyncio.sleep(2)  # Simulate I/O operation
+    print("Done fetching")
+    return {"data": 1}
+
+async def main():
+    result = await fetch_data()
+    print(result)
+
+asyncio.run(main())  # Python 3.7+
+```
+
 ####  3. Docstring
 ```py
 def greet(name):

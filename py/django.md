@@ -20,9 +20,11 @@ django-admin                         # make sure django is installed
 django-admin startproject myproj          # first command for create a folder project (do not use dash)
 python manage.py startapp IMDB_app        # create app (we can have multiple apps inside main project) [add this "IMDB_app" in INSTALLED_APPS]
 python manage.py runserver                # start server
-python mange.py shell                      # run shell inside the project
 python mange.py createsuperuser            # create super user for admin page
+python mange.py shell                      # run shell inside the project
+python manage.py shell -c "from myapp.models import MyModel; print(MyModel.objects.count())"
 python mange.py test                      # run tests
+python manage.py collectstatic            # collect static files into "STATIC_ROOT" (use this production)
 
 # migration
 python manage.py makemigrations         # Create migrations      # run this after changing the structure of models [for method not req]
@@ -81,7 +83,7 @@ duration
 
 
 
-## Model
+### Model
 
 + `Model` is a Python class that represents a database table
 + after creating a model: 
@@ -195,7 +197,7 @@ class Book(models.Model):                # inherit from models.Model
 ```
 
 
-## admin
+### admin
 
 + first create an admin: `python manage.py createsuperuser`
 
@@ -229,7 +231,7 @@ class BookAdmin(admin.ModelAdmin):
 ```
 
 
-#### URLS
+### URLS
 
 + `path convertor` is a pattern to capture values from URLs and convert them to an appropriate data type and then passing them to view functions
 + Built-in Path Converters: `int`, `str`, `slug`, `uuid`, `re`
@@ -292,7 +294,7 @@ path('posts/', views.post_list, name='post_list')                # List View
 
 
 
-#### VIEWS
+### VIEWS
 
 1. Function-Based Views (FBV): 1. better Flexibility 2. good for full control 3. good for simple views
 2. Class-Based Views (CBV):    1. better Reusability 2. good for complex views (handling GET,POST ,...)
@@ -306,6 +308,7 @@ def BookView(request, article):                   # 1. Function base view
 
 class BookView(View):                             # 2. Class base view
     def get(self, request):                       # method for get method
+        query = request.GET.get('q', '')          # access Query Parameters (GET Requests)
     def post(self, request):                      # method for post method       
 
 
@@ -333,7 +336,7 @@ redirect('view-name')                     # Redirect to view name (url named)
 Response({'key': 'value'}, status=201, headers={'X-Custom': 'value'})          # DRF Response (Django REST Framework)
 ```
 
-## QuerySet
+### QuerySet
 
 + `QuerySet` are database queries in django ORM
 + queryset is an object that can be constructed, chained, and executed to retrieve objects from your database
@@ -372,28 +375,53 @@ Book.objects.values()                           #  Get dictionaries instead of m
 Book.objects.values_list('id', flat=True)         # Get tuples of values (flat=True for single field)
 
 # 5. Field Lookups
-Book.objects.filter(field__exact=value)                         # 
-Book.objects.filter(field__iexact=value)                         # 
-Book.objects.filter(field__in=[1,2,3])                         # 
-Book.objects.filter(field__gt=5)                         # 
-Book.objects.filter(field__gte=5)                         # 
-Book.objects.filter(rating__lte=10)                         # rating less than or equal
-Book.objects.filter(field__startswith='a')                         # 
-Book.objects.filter(field__istartswith='a')                         # 
-Book.objects.filter(field__endswith='z')                         # 
-Book.objects.filter(field__range=(1,10))                         # 
-Book.objects.filter(field__icontains=value)                         # 
-Book.objects.filter(title__contains="Star")                         # title contains
-Book.objects.filter(author__first_name="aa")    # filter with ForeignKey
+# ===== BASIC COMPARISONS =====
+Book.objects.filter(title__exact="public speaking")     # Exact match (case-sensitive)    # WHERE field = value
+Book.objects.filter(title__iexact="Public Speaking")    # WHERE field ILIKE value         # Case-insensitive exact match
+Book.objects.filter(score__in=[1, 2, 3])                # WHERE field IN (1, 2, 3)        # Value is in a list
+
+# ===== NUMERIC RANGES =====
+Book.objects.filter(field__gt=5)                 # Greater than                        # WHERE field > 5
+Book.objects.filter(field__gte=5)                # Greater than or equal               # WHERE field >= 5
+Book.objects.filter(field__lt=10)                # Less than                           # WHERE field < 10
+Book.objects.filter(field__lte=10)               # Less than or equal                  # WHERE field <= 10
+Book.objects.filter(field__range=(1, 10))        # Value between range (inclusive)     # WHERE field BETWEEN 1 AND 10
+
+# ===== STRING MATCHING =====
+Book.objects.filter(field__startswith='a')       # Case-sensitive starts with          # WHERE field LIKE 'a%'
+Book.objects.filter(field__istartswith='a')      # Case-insensitive starts with        # WHERE field ILIKE 'a%'
+Book.objects.filter(field__endswith='z')         # Case-sensitive ends with            # WHERE field LIKE '%z'
+Book.objects.filter(field__iendswith='z')        # Case-insensitive ends with          # WHERE field ILIKE '%z'
+Book.objects.filter(field__contains='Star')      # Case-sensitive contains             # WHERE field LIKE '%Star%'
+Book.objects.filter(field__icontains='star')     # Case-insensitive contains           # WHERE field ILIKE '%star%'
+
+# ===== RELATIONSHIPS =====
+Book.objects.filter(author__name='John')         # Filter by ForeignKey relationship   # JOIN on author table
+Book.objects.filter(categories__id__in=[1,2])    # Filter by ManyToMany relationship   # JOIN on M2M through table
+
+# ===== NULL/BOOLEAN CHECKS =====
+Book.objects.filter(field__isnull=True)          # Field is null                       # WHERE field IS NULL
+Book.objects.filter(field__isnull=False)         # Field is not null                   # WHERE field IS NOT NULL
+Book.objects.filter(field__isempty=True)         # Field is empty string               # WHERE field = ''
+
 
 # 6. Relationships
-ramin.book_set.all()                           # filter with ForeignKey reverse [find all ramins books]
-ramin.related_name.all()                       # filter with ForeignKey reverse [you should set related_name in model]
-bookobj.publish_countries.add(countryobj)        # add ForeignKey for many to many model bcz its a list
+book = Book.objects.get(id=1)                                  # Access related object directly
+author = book.author                                          # ForeignKey access
+books = Book.objects.filter(author__name='Hemingway')        # Filter by related field      # like join
+publishers = Publisher.objects.filter(book__author__name='Hemingway')         # Publisher -> Book -> Author   # Multi-level Joins
+books = Book.objects.select_related('author').all()         # Single query with JOIN   (Now book.author doesn't trigger another query)
+books = Book.objects.prefetch_related('tags').all()        # Single query with JOIN     # 
+author_books = author.books.all()                           # Reverse relation (related_name)
+author_books = author.related_name.all()                    # filter with ForeignKey reverse [you should set related_name in model]
+author_books = author.book_set.all()                       # filter with ForeignKey reverse
+categories = book.categories.all()                         # ManyToMany access
+book.publish_countries.add(countryobj)                       # add ForeignKey for many to many model bcz its a list
+
 
 # 7. Q Objects (Complex Queries)
-from django.db.models import Q              # write Query set with Or combination
-# | means or   # & menas and   # tilda (~) means not  # comma (,) means and
+from django.db.models import Q                                                    
+# | means or   # & menas and   # tilda (~) means not  # comma (,) means and         # we can use combination of Q objects
 Book.objects.filter(Q(rating__lte=10) | ~Q(title__contains="Star"))                 # write Q object at the beginning
 Book.objects.filter(Q(rating__lte=10) & Q(title__contains="Star"), author = "aa")   # if you write author='aa' at first you get error
 
@@ -409,39 +437,32 @@ authors = Author.objects.annotate(num_books=Count('book'))          # each Autho
 for author in authors:                             # select author_name, count(books) from authors group by author_name
     print(author.name, author.num_books)
 
+# 10 F() Function                                            #  performing database operations at the SQL level
+books = Book.objects.filter(title=F('author'))                # find books where title is equal to author name
+books = Book.objects.filter(price__lt=F('cost') * 1.2)        # Find books where price is less than cost * 1.2
+Product.objects.filter(id=1).update(views=F('views') + 1)       # Increment view count atomically  (Atomic Update)
+books = Book.objects.annotate(total_value=F('inventory') * F('price'))    # Calculate total value 
+
 # 10. Create
 Book.objects.create(title="aa", rating=45)   # insert an instance using django models --> not use like class: Book(title="aa")
-obj, created = Book.objects.get_or_create(field1=value1)        # Get or create in one step (returns tuple: (object, created))
+book, created = Book.objects.get_or_create(        # Get or create in one step (returns tuple: (object, created))
+    title='The Old Man and the Sea',
+    defaults={'author': 'ali'} 
+)
 ```
 
-#### Performance in ORM
+#### Bulk operations
 
 + Running lots of individual `.save()` is slow because each one is a separate INSERT/UPDATE
 + `bulk APIs` let you touch thousands of rows with only a handful of SQL statements
-+ django also use `cache` for returnung the result and not execute query again if you save that query in a variable
-+ Django's QuerySets are `lazy` - they don't execute database queries until absolutely necessary
 
 ```py
-# 0. lazy query evaluation
-myQuery = Book.objects.filter(rating__lte=10))      # myQuery store the query definition but not execute it until print
-print(myQuery)          # django now execute the query     # django uses cache for this query since we stored in a variable
-
-# 0. QuerySet optimization                         # control which 'fields' are loaded immediately
-Book.objects.defer('description')                     # Load everything except "description" now (exp: other fields are large)
-books= Book.objects.only('title')                     #  Load only "title" field now; everything else is deferred
-for book in books:                          # Accessing any other field triggers a second SQL query
-    print(book.title)           # no extra query
-    print(book.description)     # triggers separate SQL query
-
-
-
 # 1. Bulk Create                                     # # Create all at once (returns created objects)
 Book.objects.bulk_create(             
     [Book(title=t, price=p) for t, p in data],        # list comprehension for queryset
     batch_size=1000,          # The batch_size parameter controls how many objects are created in a single query
     ignore_conflicts=True,    # ON CONFLICT DO NOTHING (PostgreSQL, MySQL ≥8, SQLite ≥3.35)
 )
-
 
 # 2. Bulk Update
 customers = Book.objects.filter(status='inactive')               # Get queryset (not execute yet)
@@ -455,54 +476,437 @@ updated_count = Customer.objects.bulk_update(               # Update all at once
     batch_size=500
 )
 
-# 3. QuerySet.update()
-Book.objects.filter(rating__lte=10).update(rating=11)
-
-# 4. QuerySet.delete()
-Book.objects.filter(rating__lte=10).delete()
-
-# 5. Insert
-Book.objects.insert([
+# 3. QuerySet methods (bulk mechanism)
+Book.objects.filter(rating__lte=10).update(rating=11)            #  QuerySet.update()
+Book.objects.filter(rating__lte=10).delete()                      #  QuerySet.delete()
+Book.objects.insert([                                             #  Insert
     {'title': 'book1', 'price': 99},
     {'title': 'book2', 'price': 149},
 ], ignore_conflicts=True)
 ```
 
-### Access data view
+#### Lazy evaluation query
+
++ django also use `cache` for returnung the result and not execute query again if you save that query in a variable
++ Django's QuerySets are `lazy` - they don't execute database queries until absolutely necessary
 
 ```py
-a = get_object_or_404(Book, pk=1)      # alt for get with try except ==> get data from db and if not exist return[raise] 404.html file
+# 1. lazy query evaluation
+myQuery = Book.objects.filter(rating__lte=10))      # myQuery store the query definition but not execute it until print
+print(myQuery)          # django now execute the query     # django uses cache for this query since we stored in a variable
+
+# 2. QuerySet optimization                         # control which 'fields' are loaded immediately
+Book.objects.defer('description')                     # Load everything except "description" now (exp: other fields are large)
+books= Book.objects.only('title')                     #  Load only "title" field now; everything else is deferred
+for book in books:                          # Accessing any other field triggers a second SQL query
+    print(book.title)           # no extra query
+    print(book.description)     # triggers separate SQL query
+```
+
+#### prefetch_related() for M2M relationships
+
++ `prefetch_related()` is  designed for "to-many" relationships (ManyToMany and reverse ForeignKeys)
++ `select_related()` is designed for "to-one" relationships. (ForeignKey, OneToOne)
+
+```py
+class Book(models.Model):
+    title = models.CharField(max_length=200)
+    tags = models.ManyToManyField('Tag', related_name='books')
+
+class Tag(models.Model):
+    name = models.CharField(max_length=50)
+
+# 1. The Problem Without Prefetching
+books = Book.objects.all()                 # This creates 1 query for books + 1 query per book for tags (N+1 problem)
+for book in books:            
+    print(book.title, [tag.name for tag in book.tags.all()])
+
+# 2. Solution with prefetch_related()
+books = Book.objects.prefetch_related('tags').all()        # just 2 query: 1. get all books 2. get all tags
 ```
 
 
-#### Template VIEW
+### Data Access in View
 
 ```py
-class BookView(TemplateView):    #Class base view for render a template for get method
-    template_name = "1.html"       # random_name gets the template as render
-    def get_context_data(self, **kwargs):    # send date into template
-        context = super().get_context_data(**kwargs)
-        id = self.kwargs.get("id")      # get id from url
-        loaded_review = self.object          # load data from model 
-        context["message"] = "for insert into temolate"
+from django.shortcuts import get_object_or_404                      # get data from db and if not exist return "raise 404.html" file
+def book_detail(request, pk):                                       # get_object_or_404 is alt for get with try except like
+    book = get_object_or_404(Book, pk=pk)                            
+    return render(request, 'books/detail.html', {'book': book})     # pass objects to template
+    return render (request , "1.html" , {"age":45})                 # DTL  Django Tmplate Languages  
+```
+
+### templates
+
++ generating dynamic HTML
++ format is html
++ Separate presentation from business logic (views/models)
++ `Static files`: CSS, JS, images used in your site design
++ `Media files`: Uploaded by users (e.g., pictures, documents)
++ always use a web server (Nginx/Apache) in production! (for static and media files)
+
+###### 1. Settings
+
+```py
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],  # Global templates
+        'APP_DIRS': True,  # Looks for app-specific templates
+    }
+]
+
+STATIC_URL = '/static/'                             # URL prefix for static files
+STATIC_ROOT = BASE_DIR / 'staticfiles'               # For collectstatic (in production) # we should use Nginx as a webserver for this
+STATICFILES_DIRS = [BASE_DIR / 'static',  ]          # Global static files
+
+MEDIA_URL = '/media/'                  # URL to access uploaded files
+MEDIA_ROOT = BASE_DIR / "media"        # Where to store uploaded files
+```
+
+###### 2. Template Structure
+
+```css
+/* Project-Wide Templates (Shared Layouts) */
+myproject/
+├── templates/           # Global templates (settings.TEMPLATES.DIRS)
+│   ├── base.html        # Master layout   (Full HTML document)
+│   ├── includes/        # Reusable components
+│   │   ├── header.html  # # Fragment (<header>...</header>)
+│   │   ├── footer.html    # Fragment
+│   │   └── navigation.html
+│   └── errors/
+│       ├── 404.html
+│       └── 500.html
+
+/* App-Specific Templates */
+myapp/
+├── templates/
+│   ├── base.html        # Master layout   (Full HTML document)
+│   └── myapp/           # Namespaced under app name
+│       ├── list.html    # Without namespacing (myapp/template.html), Django uses the first matching template found
+│       ├── detail.html  # use namespacing to avoids naming collisions
+│       └── partials/    # App-specific components
+│           ├── card.html
+│           └── form.html
+
+/*  Project-Wide Static Files */
+myproject/
+├── static/  # Global static files (project-wide)
+│   ├── css/
+│   │   └── base.css
+│   ├── js/
+│   │   └── main.js
+│   └── images/
+│       └── favicon.ico
+└── manage.py
+
+/* App-Specific Static Files */
+├── your_app/
+│   ├── static/
+│   │   └── your_app/  # App-specific static files (namespaced)
+│   │       ├── css/
+│   │       │   └── app.css
+│   │       ├── js/
+│   │       │   └── app.js
+│   │       └── images/
+│   │           └── logo.png
+```
+
+```py
+return render(request, "myapp/list.html")                # Correct (namespaced)
+return render(request, "list.html")                 # Avoid (non-namespaced) - may conflict with other apps
+```
+
+###### 3. DTL (djngo template language)
+
+```py
+# 1. Variables
+
+{{ variable }}  # Renders a variable -->
+{{ user.username }}  #  Access attributes -->
+{{ list.0 }}  # Access list index -->
+{{ dict.key }}  #  Access dictionary key -->
+
+# 2. Filters (Modify variables)
+
+{{ name|lower }}               #  Converts to lowercase -->
+{{ value|default:"N/A" }}      # Fallback if empty -->
+{{ date|date:"Y-m-d" }}          # Format date -->
+{{ text|truncatechars:50 }}     # Limit text length -->
+
+# 3. Tags (Control logic)
+
+{% tag %} ... {% endtag %}               # Block tags -->
+{% if condition %} ... {% endif %}        #  Conditionals -->
+{% for item in list %} ... {% endfor %}  #  Loops -->
+{% url 'view_name' arg %}                #  URL reversing -->
+
+# 4. if-else
+{% if user.is_authenticated %}
+    <p>Welcome, {{ user.username }}!</p>
+{% else %}
+    <a href="{% url 'login' %}">Login</a>
+{% endif %}
+
+# 5. loop
+<ul>
+{% for book in books %}
+    <li>{{ book.title }} ({{ book.author }})</li>
+{% empty %}
+    <li>No books found.</li>
+{% endfor %}
+</ul>
+
+# 6. Loop Variables
+{% for item in list %}
+    {{ forloop.counter }}        #  1-based index -->
+    {{ forloop.counter0 }}       # 0-based index -->
+    {{ forloop.first }}          #  if first item -->
+    {{ forloop.last }}          #  True if last item -->
+{% endfor %}
+
+# 7. block (Inheritance - base template)
+<body>
+	{% block content %}{% endblock %}
+</body>
+
+# 7. block (Inheritance - child template)
+{% extends 'base.html'%}
+
+{% block content %}
+Hello, World!
+{% endblock %}
+
+# 8. include (base template)
+<div>
+{% include "includes/header.html" %}       # include is like inserting to HTML
+</div>
+
+# 8. include (child template)
+<div> this is a card </div>
+
+
+# 9. dynamic urls
+<div> <a href="{% url 'namedurl' %}">{{item|title}}</a></div>
+{% url 'blog:post_detail' post.id %}
+<a href="{% url 'book_detail' pk=book.id %}">View Book</a>
+
+# 10. forms
+<form method="post" action="/users">    # default action is / and default method is GET
+    {% csrf_token %}                         # creates a hidden input with a token in value attr
+    {{ form.as_p }}                        #  Renders form as paragraphs -->
+    <button type="submit">Submit</button>  # csrf_token is Required for POST requests
+</form>
+{{ form.username.errors }}              # Displays errors -->
+
+# 11. Static
+{% include "partials/header.html" %}                            # 
+{% include "./var.html" with a="45" %}            # partial template with sending data
+
+{% load static %}                                               # like "import" you need to load static file for using the in other tags
+<link rel="stylesheet" href="{% static 'css/base.css' %}">        # CSS -->
+<img src="{% static 'images/logo.png' %}" alt="Logo">             # Image -->
+<script src="{% static 'js/main.js' %}"></script>                 #  JS -->
+
+# 12. Tag Utilities
+{% with total=items.count %}{{ total }}{% endwith %}
+{% now "Y-m-d H:i" %}
+{% verbatim %}{{ raw js }}{% endverbatim %}
+```
+
+##### HTML Content
+
+1. Base HTML (Base Temple) ---->   full html tags
+2. Partial HTML (Child Template) ---->  not full html  ---> full of DTL variables
+3. HTML Fragments (Components) ---->  not full html ---> Often represent UI components (cards, buttons, modals)
+
+```html
+<!-- templates/base.html -->                  <!-- 1. Base Template -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Default Title{% endblock %}</title>
+</head>
+<body>
+    {% include "includes/navbar.html" %}
+    {% block content %}{% endblock %}
+</body>
+</html>
+
+<!-- templates/components/book.html -->         <!-- 2. Partial Template -->
+{% extends "base.html" %}
+{% block title %}Child Title{% endblock %}     <!-- order is not important -->
+{% block content %}                             <!--just write DTL syntax in this file-->
+    <article>                          <!-- No <html>, <head>, or <body> needed -->
+        <h1>{{ post.title }}</h1>
+        <div>{{ post.content }}</div>
+    </article>
+{% endblock %}
+
+<!-- templates/includes/navbar.html -->        <!-- 3. HTML Fragments -->
+<nav class="navbar">
+    <a href="/">Home</a>
+    <a href="{% url 'about' %}">About</a>
+</nav>
+```
+
+### static files
+
+
+```py
+# 2. urls.py
+from django.conf import settings
+
+if settings.DEBUG:                       # For production only if DEBUG is False
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # urlpatterns = [path('/'),...] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)          # another syntax
+
+# 3. templates
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<img src="{% static 'images/logo.png' %}" alt="Logo">
+```
+
+
+#### Generic VIEW
+
++ `Generic Views` are pre-built class-based views that handle common web development patterns
++ we call them generic since: `from django.views.generic import ListView`
+
+1. Display Views
+    ListView: Displays a list of objects
+    DetailView: Displays details for a single object
+    TemplateView: Renders a template without any model context
+
+2. Editing Views
+    FormView: Displays and processes a form
+    CreateView: Creates new model instances
+    UpdateView: Updates existing model instances
+    DeleteView: Deletes existing model instances
+
+###### 1. TemplateView
+
++ simplest CBV for GET method perfected for static pages that don't need to interact with db
+
+```py
+# 1. basic usage
+class HomePageView(TemplateView):
+    template_name = "appName/home.html"     # the only required argument
+
+# 2. with context
+class HomePageView(TemplateView):
+    template_name = "appName/home.html"
+    extra_context = {                       # use these as variable in html template
+        "first_name": "ali",
+        "last_name": "reza",
+    }
+
+# 3. override get_context_data()                     # we can override get_context_data() for all generic views
+class BookView(TemplateView):    
+    template_name = "1.html"       # 
+    def get_context_data(self, **kwargs):             # send date into template similar to extra_context ={}
+        context = super().get_context_data(**kwargs)  # get id from url (do not forget to add variable in urls.py)
+        id = self.kwargs.get("id")                    # {{id}} in template   # there is no need to add to context
+        context["message"] = "for insert into temolate"    # {{message}} in template
         return context
+```
 
-class BookListView(ListView):    #Class base view for render a template for get method
-    template_name = "1.html"       # random_name gets the template as render
-    model = Book                   # get model. by default read all 
-    context_object_name = "books"       # get objects with name books instead of object_list in template by default
-    def get_context_data(self, **kwargs):    # send date into template
-    def get_ordering(self):                #overrider order
-    def queryset(self):                    #overrider queryset for how to fetching data
+###### 2. ListView
+
+```py
+class BookListView(ListView):
+    model = Book                            # the only required argument
+    template_name = 'books/book_list.html'  # Optional (default: <app>/<model>_list.html)
+    context_object_name = 'books'  # Optional (default: object_list)    #  get objects with name books in template  {{books}}
+    paginate_by = 15                   # Optional pagination   (default: 10 per page)
+    ordering = ["-published_at"]        # Optional ordering     (default: newest first)
+
+    def get_context_data(self, **kwargs):    # send date into template or get a variable from url
+    def get_ordering(self):                # overrider ordering
+    def queryset(self):                    # overrider queryset for how to fetching data
         base_queryset = super().queryset()
-        return base_queyset.filter(rating__gte=10)
+        return base_queyset.filter(rating__gte=10)          
+# template variables: 1. {{object_list}} 2. {{page_obj}} 3. {{is_paginated}} 4. {{next_page}} 5. {{previous_page}} 6. {{object_list}}
+```
 
-class BookDetailView(DetailView):    #Class base view for render a template for get method
-    template_name = "1.html"       # random_name gets the template as render
-    model = Book                   # get model. by default read all
-    # slug or pk ==> use in urlpatterns
-    # in template you can use lowercase model name or "object"
+###### 3. DetailView
 
++ `slug` is a URL-friendly, human-readable version of a string
++ It is used to create clean, SEO-friendly URLs
++ slug or pk ==> use in urlpatterns=[]
+    + `<int:pk>`
+    + `<slug:slug>`
+
+```py
+class BookDetailView(DetailView):    # Class base view for render a template for get method
+    model = Book                   # get model 
+    template_name = "1.html"       # optional (default: <app>/<model>_detail.html)
+    context_object_name = "Book"   # Optional (default: object or lowercase model name)
+    queryset = Book.objects.filter(is_published=True)  # Only show published items
+    slug_field = 'custom_slug'  # Default: 'slug'     # Specifies the database field for the slug lookup
+    slug_url_kwarg = 'book_slug'  # Default: 'slug'     # Matches URL variable in urlpatterns=[]  <slug:book_slug>
+    def get_object(self):            # override get_object
+        obj = super().get_object(queryset)
+        # add custome logic 
+        return obj
+```
+
+###### 4. CreateView
+
+```py
+class BookFormView(CreateView):       # saves data in db automatically
+    model = Book                      # Required  # create a form view like db
+    fileds = "__all__"               # Required  #  all fields in db  (or use `form_class`)
+    fields = ['field1', 'field2']   # Fields to include in the form (or use `form_class`)
+    template_name = '1.html'         # Default: 'yourapp/yourmodel_form.html'
+    success_url = '/success/'        # Where to redirect after successful submission
+    form_class = MyCustomForm         # no auto-generate form (create a class for your own form instead of `fields`)
+
+    def get_initial(self):            # Adding Initial Data
+        return {'status': 'draft'}     # Pre-fill 'status' field
+
+    def form_valid(self, form):        # customize save logic and modifying form before saving
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
+class MyCustomForm(forms.ModelForm):
+    class Meta:
+        model = Book
+        fields = ["title", "content"]
+        widgets = {                               # custome widgets
+            "title": forms.TextInput(attrs={"class": "form-control"}),
+        }
+```
+
+###### 5. UpdateView
+
++ very similar to CreateView
+
+```py
+class BookUpdateView(UpdateView):             # update/<int:pk>/
+    model = Book  # Required
+    fileds = "__all__"                          # Required  #  all fields in db  (or use `form_class`)
+    fields = ['field1', 'field2']                    # Fields to include in the form (or use `form_class`)
+    template_name = '1.html'  # Default: 'yourapp/yourmodel_form.html'
+    success_url = '/success/'  # Where to redirect after update
+    form_class = MyCustomForm  # no auto-generate form (instead of `fields`)
+```
+
+###### 6. DeleteView
+
+```py
+class BookDeleteView(DeleteView):     # delete/<int:pk>/
+    model = Book  # Required
+    template_name = '1.html'  # Default: 'yourapp/yourmodel_confirm_delete.html'
+    success_url = reverse_lazy('success-view-name')  # Where to redirect after deletion
+```
+
+###### 7. FormView
+
+```py
 class BookFormView(FormView):
     form_class = myForm      #send this data to template_name
     template_name = "1.html"
@@ -510,12 +914,6 @@ class BookFormView(FormView):
     def form_valid(self, form, _FormT):
         form.save()          # save to database
         return super().form_valid(form)
-
-class BookFormView(CreateView):    # saves data in db automatically
-    model = Book         # create a form view like db
-    fileds = "__all__"    # or a Model Form
-    template_name = "1.html"
-    sucess_url ="/thanks"   
 ```
 
 ### FORM
@@ -559,7 +957,7 @@ if form.is_valid(): # check if form is valid
 ```
 
 
-### Upload
+### Upload (media files)
 ```py
 def upload(request):                         # view function
     request.FILES.image                      # access file elements from frontend
@@ -576,101 +974,34 @@ class MyForm(forms.Form):
 class ProfileModel(models.Model):
     image = models.ImageField(upload_to="images/")
     image = models.FileField(upload_to="images/")     # set path in settings.py
-    MEDIA_ROOT = BASE_DIR / "media"        # settings.py
-    MEDIA_URL = "user-media/"            # settings.py  [A=>B]
-    urlpatterns = [] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   # connect path with url
-```
-
-
-
-
 # templates
-
-```py
-TEMPLATES =[ "DIRs" : [ BASE_DIR / "challenges/" / "templates"]]   ## way 1   [settings.py]
-INSTALLED_APPS =[]            ## way 2 ==> register your app [settings.py]
-render (request , "1.html" , {"age":45}) ## DTL tmplate languages  
-context==> {{age}}
-# tag {% for %} {% endfor %}
-<div> <a href="{% url 'namedurl' %}">{{item|title}}</a></div>
-{% block mycontent %}{% endblock %}  # base.html ==> inheritance
-{% include "./var.html" with a="45" %}            # partial template with sending data
-
-
-############################ static file
-{% block css_files %}{% endblock %}                    # in base.html file
-###
-{% load static%}                                        # first you need to load static file
-{% block css_files %}                                  # in inheritance file
-    <link rel="stylesheet" href="{% static 'challenges\challenge.css' %}">
-{% endblock %}
-# if you want to load general css file ===> settign.py => STATICFILES_DIRS = [BASE_DIR / "static"]
-<form method="post" action="/users">    # default action is / and default method is GET
-    {% csrf_token %}    # creates a hidden input with a token in value attr
-</form>
+<img src="{{ user.profile.avatar.url }}" alt="Avatar">
 ```
 
-## Django shell
+
+
+
+### Django shell
+
++ for testing queries
+
 ```py
-from app_name.models import Book      # app.models import className
+# python manage.py shell
+from app_name.models import Book      # app.models import className 
 author = Author(first_name="aa", last_name="aa")       # create object
 a = Book(title = "aa", rating = 45, author = author)   # create object with ForeignKey
 a.save()                          # save data in db
 a.delete()                       # delete data in db
 ```
 
-
-### static files
-
-+ `Static files`: CSS, JS, images used in your site design
-+ `Media files`: Uploaded by users (e.g., pictures, documents)
-+ always use a web server (Nginx/Apache) in production!
-
-```py
-# 1. settings.py
-STATIC_URL = '/static/'                   # URL to access static files in browser
-STATICFILES_DIRS = [BASE_DIR / "static"]  # Optional (for extra locations)
-STATIC_ROOT = BASE_DIR / "staticfiles"    # Only for production (collectstatic)
-
-# 2. urls.py
-from django.conf import settings
-from django.conf.urls.static import static
-
-if settings.DEBUG:                       # For production only if DEBUG is False
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    # urlpatterns = [path('/'),...] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)          # another syntax
-
-
-# 3. templates
-{% load static %}
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
-<img src="{% static 'images/logo.png' %}" alt="Logo">
+```bash
+pip install django-extensions ipython           # install django-extensions and IPython
+python manage.py shell_plus                     # Auto-imports all your models
 ```
 
-### Media Files
 
-```py
+### Authentication
 
-MEDIA_URL = '/media/'  # URL to access uploaded files
-MEDIA_ROOT = BASE_DIR / "media"  # Where to store uploaded files
-
-from django.conf import settings
-from django.conf.urls.static import static
-
-urlpatterns = [
-    # your other urls
-]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-from django.db import models
-
-class Profile(models.Model):
-    avatar = models.ImageField(upload_to='avatars/')
-# templates
-<img src="{{ user.profile.avatar.url }}" alt="Avatar">
-```
 
 
 ### Session
@@ -689,5 +1020,10 @@ class MyDetail(DetailView):
         context = super().get_context_data(**kwargs)
         context["session_key"] = self.request.session.session_key
 ```
+
+
+
+
+
 
 
