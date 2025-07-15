@@ -1343,6 +1343,13 @@ from math import sqrt, pi, exp    # import specific functions
 from math import *                # import all functions  (not recommended)
 ```
 
+##### 2. import lazy loading
+
+```py
+def func():                # not available outside of function
+    import pandas as pd  # Only imported when function runs
+```
+
 ##### 2. import files
 
 ```py
