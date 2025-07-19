@@ -611,6 +611,19 @@ a.end()        # 6            # index where match ends
 a.span()       # (3, 6)       # tuple of start and end
 ```
 
+### Raw string
+
++ `raw string` treats backslashes (\) as literal characters rather than escape characters
++ `r` prefix before a string literal is used to indicate raw string
+
+```py
+normal_string = "This is a normal \n string."          # in normal string \n is treated as new line
+raw_string = r"This is a raw \n string."               # in raw string \n is not treated as new line
+path = 'C:\\Users\\Name\\Documents'                    # Without raw string (requires double backslashes)
+path = r'C:\Users\Name\Documents'                      # With raw string (cleaner)
+```
+
+
 ### Memory Behavior
 + In Python, variables don’t have an associated type or size
 + In Python, everything is an object

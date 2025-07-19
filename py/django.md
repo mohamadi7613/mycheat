@@ -20,18 +20,21 @@ django-admin                         # make sure django is installed
 django-admin startproject myproj          # first command for create a folder project (do not use dash)
 python manage.py startapp IMDB_app        # create app (we can have multiple apps inside main project) [add this "IMDB_app" in INSTALLED_APPS]
 python manage.py runserver                # start server
+python manage.py runserver 8080            # start server on port 8080
 python mange.py createsuperuser            # create super user for admin page
 python mange.py shell                      # run shell inside the project
 python manage.py shell -c "from myapp.models import MyModel; print(MyModel.objects.count())"
 python mange.py test                      # run tests
 python manage.py collectstatic            # collect static files into "STATIC_ROOT" (use this production)
+python manage.py clearsessions            # delete expired sessions (use this with a cronjob)
 
 # migration
 python manage.py makemigrations         # Create migrations      # run this after changing the structure of models [for method not req]
 python manage.py migrate                # Apply migrations        # migrations convert model into sql query
-python manage.py showmigrations         # Show migrations
+python manage.py showmigrations         # Show migrations         
 python manage.py migrate myapp          # Migrate specific app
 python manage.py migrate myapp 0001    # Rollback migration
+# if you have a syntax error in other parts of your code (like views) then migration will not work
 ```
 
 ### makemigration error 
@@ -86,6 +89,7 @@ duration
 ### Model
 
 + `Model` is a Python class that represents a database table
++ we can have a Model with equal name in different apps (there is no conflict)
 + after creating a model: 
     1. make migrations 
     2. migrate 
@@ -195,6 +199,13 @@ class Book(models.Model):                # inherit from models.Model
         ordering = ['-created_at', 'title']       # Default sorting for queries
         indexes = [models.Index(fields=['title'])]  # add index to db for faster search
 ```
+
+### Model relations
+
+1. OneToOneField: One author can have only one address
+2. ManyToManyField: Many authors can have many artiles
+3. ForeignKey: One author can have many books
+
 
 
 ### admin
@@ -375,6 +386,8 @@ Book.objects.values()                           #  Get dictionaries instead of m
 Book.objects.values_list('id', flat=True)         # Get tuples of values (flat=True for single field)
 
 # 5. Field Lookups
+Book.objects.filter(title="foo")                         # Return matching records
+
 # ===== BASIC COMPARISONS =====
 Book.objects.filter(title__exact="public speaking")     # Exact match (case-sensitive)    # WHERE field = value
 Book.objects.filter(title__iexact="Public Speaking")    # WHERE field ILIKE value         # Case-insensitive exact match
@@ -562,6 +575,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static',  ]          # Global static files
 
 MEDIA_URL = '/media/'                  # URL to access uploaded files
 MEDIA_ROOT = BASE_DIR / "media"        # Where to store uploaded files
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB               # Maximum upload size (2.5MB default)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 ```
 
 ###### 2. Template Structure
@@ -619,6 +634,8 @@ return render(request, "list.html")                 # Avoid (non-namespaced) - m
 ```
 
 ###### 3. DTL (djngo template language)
+
++ `jinja` is fatster than `DTL` and more powerful used by Ansible and Flask.
 
 ```py
 # 1. Variables
@@ -756,6 +773,7 @@ Hello, World!
 
 
 ```py
+# 1. settings.py 
 # 2. urls.py
 from django.conf import settings
 
@@ -800,7 +818,7 @@ class HomePageView(TemplateView):
 class HomePageView(TemplateView):
     template_name = "appName/home.html"
     extra_context = {                       # use these as variable in html template
-        "first_name": "ali",
+        "first_name": "ali",                # {{first_name}} in template
         "last_name": "reza",
     }
 
@@ -819,8 +837,8 @@ class BookView(TemplateView):
 ```py
 class BookListView(ListView):
     model = Book                            # the only required argument
-    template_name = 'books/book_list.html'  # Optional (default: <app>/<model>_list.html)
-    context_object_name = 'books'  # Optional (default: object_list)    #  get objects with name books in template  {{books}}
+    template_name = 'books/book_list.html'  # Optional (default: <app>/<model>_list.html)  {{books}} {{books.title}} 
+    context_object_name = 'books'  # Optional (default: object_list)    #  get objects with name books in template  
     paginate_by = 15                   # Optional pagination   (default: 10 per page)
     ordering = ["-published_at"]        # Optional ordering     (default: newest first)
 
@@ -844,7 +862,7 @@ class BookListView(ListView):
 class BookDetailView(DetailView):    # Class base view for render a template for get method
     model = Book                   # get model 
     template_name = "1.html"       # optional (default: <app>/<model>_detail.html)
-    context_object_name = "Book"   # Optional (default: object or lowercase model name)
+    context_object_name = "Book"   # Optional (default: object or lowercase model name)  # {{book.title}} in template
     queryset = Book.objects.filter(is_published=True)  # Only show published items
     slug_field = 'custom_slug'  # Default: 'slug'     # Specifies the database field for the slug lookup
     slug_url_kwarg = 'book_slug'  # Default: 'slug'     # Matches URL variable in urlpatterns=[]  <slug:book_slug>
@@ -855,6 +873,8 @@ class BookDetailView(DetailView):    # Class base view for render a template for
 ```
 
 ###### 4. CreateView
+
++ `CreateView`, `UpdateView`, `FormView` have similar template syntax.
 
 ```py
 class BookFormView(CreateView):       # saves data in db automatically
@@ -879,6 +899,15 @@ class MyCustomForm(forms.ModelForm):
         widgets = {                               # custome widgets
             "title": forms.TextInput(attrs={"class": "form-control"}),
         }
+# template
+# template variables: 1. {{form}} 2. {{form.fields}}
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}             # form as paragraph 
+    {{ form.as_ul }}             # form as list
+    {{ form.as_table }}          # form as table
+    <input type="submit" value="Save">
+</form>
 ```
 
 ###### 5. UpdateView
@@ -902,79 +931,197 @@ class BookDeleteView(DeleteView):     # delete/<int:pk>/
     model = Book  # Required
     template_name = '1.html'  # Default: 'yourapp/yourmodel_confirm_delete.html'
     success_url = reverse_lazy('success-view-name')  # Where to redirect after deletion
+
+# template
+<form method="post">
+    {% csrf_token %}
+    <input type="submit" value="Yes, delete">
+</form>
 ```
 
 ###### 7. FormView
 
++ `FormView` is for handling forms that don't correspond to a model (unlike CreateView/UpdateView)
++ It's perfect for: 1. Contact form 2. search form
++ first we should create a form class using `forms.Form`
++ `forms.Form` is the base class for creating standard HTML forms in Django that aren't directly tied to a model
+
 ```py
-class BookFormView(FormView):
-    form_class = myForm      #send this data to template_name
-    template_name = "1.html"
-    sucess_url = "/thanks"    # redirect
+class BookFormView(FormView):                      # FormView
+    form_class = ContactForm                        # create this form using `forms.Form`
+    template_name = "1.html"                       # send the form to template_name
+    sucess_url = "/thanks"                           # redirect
     def form_valid(self, form, _FormT):
-        form.save()          # save to database
+        form.save()                                # save to database   where??????
         return super().form_valid(form)
-```
 
-### FORM
+# 1. regular form
+class ContactForm(forms.Form):
+    user_name = forms.CharField(max_length=100)          # create an <input name=user_name /> and a label=User Name
+    email = forms.EmailField()
+    message = forms.CharField(widget=forms.Textarea)    #  override default widget
 
-```py
-##########################form.py
-from django import forms
-class MyForm(forms.Form):    # 1.regular form
-    user_name = forms.CharField()        # create an <input name=user_name /> and a label=User Name
-    user_name = forms.CharField(label="Your name", max_length=100, error_messages={"required": "Please enter your name", "max_length": "Name too long"})     # override error messages and label
-    user_name = forms.CharField(widget=forms.TextArea(attrs={"placeholder": "Enter your name"})) # override default widget
-    rating = forms.IntegerField(min_value=1, max_value=10) 
-
-class MyForm(forms.Form):     # 2.model form like db
+# 2. model form
+class ContactForm(forms.Form):     
     class Meta:
         model = Book            # connect this form to Book model
         fields = "__all__"      # save all fields or use []
         exclude = ["title"]    # do not save these fields
         labels = {"author": "Author Name"}  # override label
         error_messages = {"author": {"required": "Please enter your name", "max_length": "Name too long"}}
+```
 
-#######validation
-def BookView(request):             # function base view
-    request.POST.username                       # access post elements from frontend
-    form = MyForm()
-    render(request, "1.html", {"form":form})
-form = MyForm(request.POST)    # request.POST is a dictionary
-form = MyForm(request.POST, instance=Book.objects.get(pk=1))    # update a model form
-if form.is_valid(): # check if form is valid
-    form.save()                      # just in model form not regular form
-    name = form.cleaned_data["name"] # get cleaned data [validated data]
-######################template.html
+###### 8. forms.Form in detail
+
+```py
+class ContactForm(forms.Form):                 # from django import forms
+
+    # 1. form fields
+    text = forms.CharField()
+    message = forms.CharField(widget=forms.Textarea)   # Multi-line text
+    number = forms.IntegerField()
+    decimal = forms.DecimalField()
+    price = forms.FloatField()
+    boolean = forms.BooleanField()
+    null_boolean = forms.NullBooleanField()                      # None/True/False
+    date = forms.DateField(widget=forms.SelectDateWidget())
+    email = forms.EmailField()
+    choice = forms.ChoiceField(choices=[('A', 'Option A'), ('B', 'Option B'), initial='A'])
+    file = forms.FileField()
+    image = forms.ImageField()  # Requires Pillow library
+    url_field = forms.URLField()
+
+    # 2. form validation
+    char_field = forms.CharField(
+        max_length=100,          # Maximum length
+        min_length=3,            # Minimum length
+        required=True,           # Whether field is mandatory
+        error_messages={"required": "Please enter your name", "max_length": "Name too long"}
+        label='Name',            # Human-readable label
+        initial='Default',       # Initial value
+        help_text='Your name',   # Help text
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter name'
+        })
+    )
+
+    integer_field = forms.IntegerField(
+        min_value=1,
+        max_value=100
+    )
+
+    decimal_field = forms.DecimalField(
+        max_digits=5,           # Total digits (incl. decimals)
+        decimal_places=2        # Digits after decimal point
+    )
+
+    boolean_field = forms.BooleanField(
+        required=False,         # Typically not required for checkboxes
+        label='I agree'
+    )
+    
+    # 3. form widgets
+    forms.TextInput()        # Standard text input
+    forms.PasswordInput()    # Password field
+    forms.Textarea()         # Multi-line text
+    forms.CheckboxInput()    # Single checkbox
+    forms.Select()           # Dropdown select
+    forms.RadioSelect()      # Radio buttons
+    forms.CheckboxSelectMultiple()  # Multiple checkboxes
+    forms.SelectDateWidget() # Date dropdowns
+    forms.FileInput()        # File upload
+```
+
+###### 9. function base view for form.Form
+
+```py
+# ContactForm is created by forms.Form
+def BookView(request):                                     # function base view for custome validation
+    # request.POST is a dictionary
+    username = request.POST.username                       # access post elements from frontend
+    username = request.POST.get('username')                # Safer than direct access
+
+
+    # 1. regular form (non-model form)
+    form = ContactForm(request.POST)                       # For non-model forms 
+    if form.is_valid():                                    # check if form is valid
+        username = form.cleaned_data["name"]                     # get cleaned data [validated data]
+        email = form.cleaned_data["email"]
+        # add your logic with this data
+        return redirect('success-url')
+
+    # 2. model form
+    form = ContactForm(request.POST, instance=Book.objects.get(pk=1))    # update a model with form
+    if form.is_valid():                                          # check with model validation
+        form.save()                                            # Only works with ModelForm
+        return redirect('success-url')
+
+
+# template.html
 <form method="post">
     {% csrf_token %}
     {{form}}     # create an input with a label, also will return error
     <input type="submit">
-    {{form.user_name}}
-    {{form.user_name.label_tag}}
-    {{form.user_name.errors}}
+    {{form.username}}
+    {{form.username.label_tag}}
+    {{form.username.errors}}
 </form>
 ```
 
 
-### Upload (media files)
+###### 10. Upload media files  (forms.Form)
+
 ```py
-def upload(request):                         # view function
-    request.FILES.image                      # access file elements from frontend
+# 0. settings.py   (media files)
+# 0. urls.py       (meida files)
 
-def store_file(file):                          # helper function for store image in a file with binary method
-    with open(file.name, "wb+") as destination:
-        for chunk in file.chunks():
-            destination.write(chunk)
-
-class MyForm(forms.Form):
-    image = forms.ImageField()
-    image = forms.FileField()
-
+# 1. model in db
 class ProfileModel(models.Model):
+    # 1.1. folder path
     image = models.ImageField(upload_to="images/")
     image = models.FileField(upload_to="images/")     # set path in settings.py
-# templates
+    files = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))        # multiple files
+    # 1.2. date path
+    file = models.FileField(upload_to='uploads/%Y/%m/%d/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+# 2. forms.Form
+class MyForm(forms.Form):
+    image = forms.ImageField(label="Image", help_text="Max. 5MB")
+    image = forms.FileField()
+
+# 3. function base view
+def upload_view(request):                                      
+    if request.method == 'POST':
+        form = MyForm(request.POST, request.FILES)              # MyForm is created by forms.Form
+        if form.is_valid():
+
+            # Option 1: Save directly to model
+            uploaded_file = ProfileModel(file=request.FILES['file'])
+            uploaded_file.save()
+
+            # Option 2: Process file manually
+            file = request.FILES.file                                      # access file elements from frontend
+            file = request.FILES['file']                                     # safer
+            with open(f'some/path/{file.name}', 'wb+') as destination:       # store image in a file with binary method
+                for chunk in file.chunks():
+                    destination.write(chunk)
+
+            # finally
+            return redirect('success-page')
+
+
+# 3. class based view
+class UploadView(FormView):
+    form_class = MyForm
+    template_name = 'upload.html'
+    success_url = '/success/'
+    def form_valid(self, form):
+        # Access file with self.request.FILES['file']
+        return super().form_valid(form)
+
+# 4. templates
 <img src="{{ user.profile.avatar.url }}" alt="Avatar">
 ```
 
@@ -993,6 +1140,7 @@ a = Book(title = "aa", rating = 45, author = author)   # create object with Fore
 a.save()                          # save data in db
 a.delete()                       # delete data in db
 ```
+### Django shull_plus
 
 ```bash
 pip install django-extensions ipython           # install django-extensions and IPython
@@ -1002,25 +1150,314 @@ python manage.py shell_plus                     # Auto-imports all your models
 
 ### Authentication
 
+###### 1. Auth: settings.py
 
+```py
+INSTALLED_APPS = [
+    ...
+    'django.contrib.auth',  # Core authentication
+    'django.contrib.contenttypes',  # Required by auth
+    ...
+]
+
+MIDDLEWARE = [
+    ...
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    ...
+]
+
+AUTH_USER_MODEL = 'myapp.CustomUser'  # Optional: for custom user models
+LOGIN_URL = '/accounts/login/'  # Default: '/accounts/login/'
+LOGIN_REDIRECT_URL = '/'  # Where to redirect after login
+LOGOUT_REDIRECT_URL = '/'  # Where to redirect after logout
+```
+
+###### 2. Auth: User Model 
+
+```py
+from django.contrib.auth.models import User    # default user model
+
+user = User.objects.create_user(            # Create user
+    username='john',
+    password='secret123',
+    email='john@example.com'
+)
+
+# python manage.py createsuperuser
+```
+
+###### 2. Auth: User Model (custom user model)
+
+```py
+from django.contrib.auth.models import AbstractUser
+
+class CustomUser(AbstractUser):
+    phone = models.CharField(max_length=20)
+    bio = models.TextField(null=True, blank=True)
+    REQUIRED_FIELDS = ['email', 'phone']                 # REQUIRED_FIELDS for createsuperuser command
+```
+
+###### 3. Auth: built-in Views 
+
+```py
+from django.contrib.auth import views as auth_views
+urlpatterns = [
+    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('accounts/password_change/', auth_views.PasswordChangeView.as_view(), name='password_change'),
+    path('accounts/password_change/done/', auth_views.PasswordChangeDoneView.as_view(), name='password_change_done'),
+    path('accounts/password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
+    path('accounts/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('accounts/reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('accounts/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+]
+```
+
+###### 4. Auth: Custome views
+
+```py
+class MyLoginView(auth_views.LoginView):
+    template_name = 'myapp/login.html'
+    redirect_authenticated_user = True  # Redirect if already logged in
+    
+    def form_valid(self, form):
+        remember_me = form.cleaned_data.get('remember_me')
+        if not remember_me:
+            self.request.session.set_expiry(0)  # Session expires when browser closes
+        return super().form_valid(form)
+```
 
 ### Session
-session: an ongoing connection between a client and a server [even after shutdown]
-```py
-SESSION_COOKIE_AGE = 1200                   # 1200 min ,defulalt is 2 weeks settings.py
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True      # default is False
 
-request.session["key"] = value              # store data in session
-request.session.get("key")                  # get data from session
-request.session.delete("key")               # delete data from session
++ `session` is an ongoing connection between a client and a server [even after shutdown]
++ `Session` is ideal for storing temporary, user-specific data that needs to persist across multiple requests.
+    - User Authentication: 1. Authentication flags 2. Authenticated tokens 3. Permission flags
+    - User Preferences: 1. Language 2. Theme 3. Timezone 4. Display preferences (list/grid view)
+    - UI State: 1. Open/closed states of UI elements 2. Recently viewed items 3. Notification dismissal states 
+
+
++ How session works:
+    1. Client Makes First Request:
+        - No session exists yet
+        - Django generates a unique session ID
+    2. Server Response:
+        - Session ID is sent to client (usually `as a cookie`)
+        - Session data is stored server-side ( Session data is stored on the server)
+    3. Subsequent Requests:
+        - Client sends the session ID with each request
+        - Django retrieves the corresponding session data
+
++ `session` is server-side but `cookie` is client-side
+
+###### 1. Session: settings.py
+
+```py
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'      # Database-backed    # default  # Creates django_session table
+SESSION_ENGINE = 'django.contrib.sessions.backends.file',    # File-based         # specify path: SESSION_FILE_PATH
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache',   # Cache-backed like redis
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db',  # Cache + DB fallback
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies',  # Cookie-based   # Data stored in client-side cookies (encrypted)
+
+MIDDLEWARE = [                                                # in middleware order is very important
+    ...                                                        # each HTTP request will be processed by these middlewares
+    'django.contrib.sessions.middleware.SessionMiddleware',     # Every request gets a request.session object
+    'django.contrib.auth.middleware.AuthenticationMiddleware'   # session should come before AuthenticationMiddleware
+    ...                                                       # session works for both authenticated and anonymous users
+]
+
+INSTALLED_APPS = [
+    'django.contrib.sessions',                                 # usually already present
+]
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'      # for security # Default
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
+
+# Session settings
+SESSION_COOKIE_NAME = 'mysessionid'           # Default: 'sessionid'
+SESSION_COOKIE_AGE = 1209600                  # defaults: 2 weeks # in seconds 
+SESSION_COOKIE_SECURE = True                  # HTTPS only (for production)
+SESSION_COOKIE_HTTPONLY = True                # Prevent JS access
+SESSION_COOKIE_SAMESITE = 'Lax'               # CSRF protection
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False       # Persistent sessions     # default: False
+SESSION_SAVE_EVERY_REQUEST = True             # Save on every request  # default: False
+SESSION_FILE_PATH = '/tmp/django_sessions/'   # For file-based session
+```
+
+###### 2. usage
+
+```py
+request.session['username'] = 'mohammad'              # Set a session variable   (store data in session)
+username = request.session.get('username')            # returns None if not set  (get data from session)
+username = request.session.get('username', 'guest')   # with default
+request.session.set_expiry(3600)                      # set expiration time  # in minutes
+request.session.get_expiry_age()                      # get expiration time
+request.session.session_key                           # get session key
+request.session.cycle_key()                           # get new session key
+del request.session['username']                        # delete specific session variable
+request.session.delete("key")                          # delete data from session
+request.session.clear()                                # delete all session variables but keep the session
+request.session.flush()                                   # Completely delete the session with its data
+request.session.pop('user_id', None)                  # Safe delete
+request.session['user_prefs'] = {                     # Complex data (automatically serialized)
+    'theme': 'dark',
+    'language': 'en',
+    'notifications': True
+}
+session_data = request.session.items()               # Get all session data from complex data
+```
+
+###### 2. Session: views
+
+```py
+# 1. set seesion
+def login_view(request):
+    if request.method == "POST":
+        request.session['user_id'] = 42              # set session (Store the user's ID session)
+        request.session.set_expiry(3600)            # Expires in 1 hour
+        return redirect('dashboard')
+    else:
+        return render(request, 'login.html')
+
+# 2. get session
+class SessionView(View):
+    def get(self, request):
+        counter = request.session.get('counter', 0) + 1
+        request.session['counter'] = counter
+        return HttpResponse(f"Visit count: {counter}")
+
+# 3. show session with template
 class MyDetail(DetailView):
     model = Book
     template_name = "1.html"
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["session_key"] = self.request.session.session_key
+        context["session_key"] = self.request.session.session_key       # <p>{{ session_key }}</p>  
 ```
 
+
+### Session and Authentication
+
+```py
+from django.contrib.auth import authenticate, login, logout
+
+# 1. login
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)               # This creates the session and stores the authenticated user's ID in the session
+            return redirect('dashboard')         # login() Sets session cookie in the response
+
+# 2. logout
+def logout_view(request):
+    logout(request)                           # Flushes the session: 1. delete session cookie 2. delete session data 
+    return redirect('home')
+```
+
+### Checkgin authenticated user
+
+######## 1. check in Views
+```py
+if request.user.is_authenticated:
+    # Logged-in user
+else:
+    # Anonymous user
+```
+######## 2. check in templates
+
+```py
+{% if user.is_authenticated %}
+  Welcome, {{ user.username }}!
+{% else %}
+  Please log in.
+{% endif %}
+```
+
+######## 2. check globally in middleware
+
+```py
+
+```
+
+#### Django vs MERN Stack
+
+
+1. Django (Server-Side Sessions)
+    - Stateful: Server maintains session state
+    - Built-in: Sessions are core Django functionality
+    - Secure by default: CSRF protection, session fixation protection
+    - Database/Cache-backed: Persistent server-side storage
+
+2. MERN (Token-Based/Stateless)
+    - Stateless: Server doesn't maintain session state
+    - JWT/Cookie-based: Typically uses tokens (JWT) or client-side sessions
+    - Manual security: Developers must implement security measures
+    - Client-side storage: Tokens stored in localStorage/cookies
+
+------------------------------------------------------------------------------
+
+1. Django Flow
+    1. User submits credentials
+    2. Server validates and creates session
+    3. Server sends session ID in HTTP-only cookie
+    4. Subsequent requests include session cookie
+    5. Server validates session on each request
+
+1. MERN Flow
+    1. User submits credentials
+    2. Server validates and creates JWT
+    3. Server sends JWT (cookie or response body)
+    4. Client stores token (cookie/localStorage)
+    5. Subsequent requests include token (header/cookie)
+    6. Server validates token on each request
+
+
+
+### Import in Djnago cheat sheet
+
+
+```py
+# 0. Core
+from django.contrib import messages
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+
+# 1. Http
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.urls import reverse, reverse_lazy
+
+# 2. Views 
+from django.views import View
+from django.views.generic import ListView, DetailView, CreateView
+
+# 2. Models & Database
+from django.db import models
+from django.db.models import Q, F, Count, Sum, Avg, Max, Min
+from django.db.models.functions import Coalesce
+from django.db.transaction import atomic
+
+# admin
+from django.contrib.admin import AdminSite
+from django.contrib.admin.decorators import register
+from django.contrib.admin.options import ModelAdmin
+
+# 3. Forms
+from django import forms
+from django.forms import ModelForm, Form
+from django.forms.widgets import TextInput, Select, CheckboxInput
+from django.core.validators import validate_email, URLValidator
+
+# 4. Authentication
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm, PasswordResetForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+```
 
 
 

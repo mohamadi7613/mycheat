@@ -1,297 +1,645 @@
 
 
-# django rest
+# Django Rest Framework
+
+## Django-core vs DRF
 
 
-# Terminal
+| Feature                | Django                        | Django REST Framework (DRF)     | Best Use Cases                             |
+|------------------------|-------------------------------|---------------------------------|-------------------------------------------|
+| Primary Purpose        | Full-stack web development    | API development                 | Django: Websites with UI, DRF: APIs       |
+| Data Format            | HTML                          | JSON/XML                        | DRF for mobile/SPA backends               |
+| Templates              | Built-in template system      | Not included                    | Django for server-rendered pages          |
+| Admin Interface        | Complete admin panel          | Needs customization             | Django for admin interfaces               |
+| Authentication         | Session-based                 | Token/JWT/OAuth                 | DRF for API authentication               |
+| Data Serialization     | Manual context passing        | Serializer classes              | DRF for consistent data structures       |
+| URL Routing            | URLconf patterns              | ViewSets + Routers              | DRF for automatic endpoint generation    |
+| Pagination             | Django Paginator              | Built-in pagination styles      | DRF for API pagination                   |
+| Frontend Compatibility | Server-side rendering         | Designed for SPAs               | DRF with JavaScript frameworks           |
+| Performance            | Faster HTML delivery          | JSON processing overhead        | Django for content-heavy sites           |
+
+
+
+## terminal commands
 ```bash
+pip install djangorestframework
 pip show djangorestframework           # be sure you do not using venv or poetry or ...
 ```
 
-# Installation
+## Installation
 ```py
 INSTALLED_APPS = [       
     'rest_framework',        # base requirement for django rest
+    'appname',
 ]
 ```
+
 # Structure
 ```py
-app\
-|---api\
-|   |---views.py
-|   |---urls.py
-|   |---serializers.py
-|   |---permissions.py         # custome permissions
+myproject/
+│
+├── manage.py
+├── myproject/
+│   ├── __init__.py
+│   ├── settings.py
+│   ├── urls.py            
+│   └── wsgi.py
+│
+├──appname\
+│    ├──api\
+│    ├── ---views.py
+│    ├── ---urls.py
+│    ├── ---serializers.py
+│    ├── ---permissions.py         # custome permissions
+│
+└── requirements.txt
 ```
 
 ### Browsabel API
+
 ```py
+# 1. globally change
 REST_FRAMEWORK = {                             # how to change the browsable api page in our browser? 
     'DEFAULT_RENDERER_CLASSES': (               # gobally change
         'rest_framework.renderers.JSONRenderer',          # pure json insted of browsable API
     )
 }
+# 2. for specific view
 class BookList(generics.ListAPIView):                # for specific view   (not recommended)
     render_classes= [renderers.JSONRenderer]     
 ```
 
-### function base view
+### Simple summary of DRF
+
 ```py
-from rest_framework.response import Response
-from rest_framework.decorators import api_view        # error: .accepted_renderer not set on Response
-from rest_framework import status
-
-@api_view(['GET','PUT','DELETE'])            # decorator for function base views   # PUT = update all fileds, PATCH = update one or some fields
-def book_list(request,pk):                   # function base view without decorator gives 'AssertionError' for .accepted_renderer
-    if request.method == 'GET':           # @api_view handles unsupported methods with a `405 Method Not Allowed` response.
-        try:                                           # if any books does not find we get error
-            books = Book.objects.all()                   # Get a queryset of books in the form of model instance (complex data)
-            book_list = Book.objects.values()            # Get qyueryset of books in the form of dictionary
-            serializer = BookSerializer(books, many=True)   # Serialize the queryset to object  # use many when we have more than one data
-            return Response(serializer.data)          # alternative way for serializer: we can use JsonResponse in django-core
-        except ObjectDoesNotExist:              # if you dont use 'many=True' --> Got AttributeError when attempting to get a value for field 
-            return Response({"error": "Books do not exist"}, status=404)
-
-    if request.method == 'PUT':                       # PUT is for update all fields
-        book = Book.objects.get(pk=pk)                # Get pk from url
-        serializer = BookSerializer(book, data=request.data)  # Deserialize the data with (old data, new data) or (queryset, data)
-        if serializer.is_valid():
-            myvar = serializer.validated_data['active']       # we can access validated data using dictionary
-            serializer.save()
-            return Response(serializer.data)    # status code is 200 by default
-        else:
-            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
-
-    if request.method == 'DELETE':
-        book = Book.objects.get(pk=pk)                # Get the book for deleting
-        book.delete()                                # call delete from model
-        return Response(status=status.HTTP_204_NO_CONTENT)    # 204 is for succuesfully no content
-```
-## Class base view (1. APIView)
-```py
-from rest_framework.views import APIView
-class BookList(APIView):                 # class base view inherit from APIView [we dont need @api_view decorators like function based]
-
-    def get(self, request):                         # get method for http get requests
-        books = Book.objects.all()                  # get all querysets
-        serilizer = BookSerializer(books, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, pk):                        # POST method is for creating a new data
-        serilizer = BookSerializer(data=request.data)    # Modelserializer (not regular serializer) is equal for both get and post 
-        if serializer.is_valid():                      # if we want to create an object with serializer we should use 'data=' as an argument
-            serializer.save()
-            return Response(serilizer.data)            # status is 200 by default
-        else:
-            return Response(serializer.errors)
-```
-### Class base view (2. using mixins)
-The mixin classes provide specific view behavior by action methods( not handler methods like get(), post(), etc.)
-```py
-from rest_framework import mixins, generics
-# GenericAPIView extends APIView, adding commonly required behavior for list and detial views.
-class BookList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
-    # for using mixins we need to inherit from GenericAPIView in the last
-    queryset = Book.objects.all()                    # queryset is a keyword for the class otherwise we should override the `get_queryset()` method
-    serializer_class = BookSerializer                # serializer_class is a keyword for the class otherwise override the `get_serialiser()` method
-    # there is no need for passing something to serializer
-    def get(self, request, *args, **kwargs):          
-        return self.list(request, *args, **kwargs)   # list() acion provided by ListModelMixin
-    def post(self, request, *args, **kwargs):         # in browsable API creates 'HTML form' and 'Raw data'
-        return self.create(request, *args, **kwargs)  # .retrive(), .update(), .destroy()
-
-
-class BookDetail(mixins.RetrieveModelMixin, generics.GenericAPIView):
-    queryset = Book.objects.all()           # pk should send in http params but there is no need to recive pk from url
-    serializer_class = BookSerializer
-    def get(self, request, *args, **kwargs):
-        pk = kwargs.get('pk')                       # there is no need for doing this
-        return self.retrieve(request, *args, **kwargs)
-```
-
-### Class base view (3. using generics)
-generic views for creating, reading and so on: 1. ListAPIView 2. CreateAPIView 3. RetrieveAPIView 4. UpdateAPIView 5. DestroyAPIView
-```py
-from rest_framework import generics         # Generic views reduce the amount of code needed to write. (concrete views)
+# 1. model
+class Book(models.Model):
+    title = models.CharField(max_length=100)
+    author = models.CharField(max_length=100)
+# 2. serializer
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = '__all__'
+# 3. view
 class BookList(generics.ListCreateAPIView):    
-# ListCreateAPIView already have 'def get(self, req, *args, **kwargs)' section inside its implementation
-    queryset = Book.objects.all()               # there is no need for get() method
-    serializer_class = BookSerializer           # there is no need for Response and HTTP_Code
-
-class BookDetail(generics.RetrieveUpdateDestroyAPIView):  # mixed one  # get(), update(), delete()
-    queryset = Book.objects.all()         # just send an id in http params
-    serializer_class = BookSerializer
-
-class BookList(generics.ListCreateAPIView):    
-    serializer_class = BookSerializer
-    def get_queryset(self):        # instead of 'queryset' we can override it for customazation
-        pk = self.kwargs.get('pk')   # queryset handles extracting pk from url params by default
-        return Book.objects.filter(author=pk)
-
-    def perform_create(self, serializer):  # overwrite # perform_update(), perform_destroy()
-       pk = self.kwargs.get('pk')           # no need for request.data
-       author = Author.objects.get(pk=pk)   # in seriliazer we need to exclude author bcz we get if from url (no need for mapping)
-       serializer.save(author=author)      # pk is inside url not in request.data
+    queryset = Book.objects.all()               
+    serializer_class = BookSerializer           
 ```
-
-### Class base view (4. using viewsets)
-viewsets does not porvide `.get()` and `.post()` handlers, and instead porvides `.list()` and `.retrieve()` actions.
-```py
-from rest_framework import viewsets        # inside one class we can handle everything
-class BookViewSet(viewsets.ModelViewSet):  # for list and detail we create one class
-    def list(self, request):                  # when we need to get list as well as get detail of specific item its better to combine them
-        books = Book.objects.all()             # we can combine 'list' and 'detail' by using viewset 
-        serializer = BookSerializer(books, many=True)
-        return Response(serializer.data)
-
-    def retrieve(self, request, pk):
-        book = Book.objects.get(pk=pk)
-        serializer = BookSerializer(book)
-        return Response(serializer.data)
-
-    def create(self, request):          # for post method
-        serializer = BookSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-    def update(self, request, pk):      # for put method
-    def destroy(self, request, pk):     # for delete method
-# after creating viewset we need to register it in routers in urlpatterns bcz it has both list and retrieve
-from rest_framework import routers               # routers help us to combine all type of link
-router = routers.DefaultRouter()                 # with routers we can write one url for both list and detail
-router.register('books', BookViewSet.as_view(), basename='book')   # /books + /books/12
-urlpatterns = [                               # its better to not use custome urls with viewsets
-    path('', include(router.urls))     # empty string
-]   # we can add "-list" and "-detial" at the end of names_url for viewsets
-```
-
-### Class base view (5. using ModelViewSet)
-```py
-class BookViewSet(viewsets.ModelViewSet):         # ModelViewSet provides all methods 
-    queryset = Book.objects.all()               # list(), retrieve(), create(), update(), destroy()
-    serializer_class = BookSerializer
-
-class BookViewSet(viewsets.ReadOnlyModelViewSet):         # ReadOnlyModelViewSet provides only list() and retrieve()
-```
-
 
 ## Serialization
-we have 2 types of serialization: 1. Regular serializer 2. ModelSerializer
+
++ after createing a `Model` we should create a `Serializer` for that model
++ `Serialization`: process of converting complex data types (exp: Django models or querysets) into a python data types that can be easily rendered into JSON or XML
++ `Deserialization`: process of converting JSON into a Python object
++ serialization in DRF is similar to `JSON.stringify / JSON.parse` in JS
++ we have 2 types of serialization: 1. Regular serializer 2. ModelSerializer
++ In django-core for serialization we have 3 steps: 
+    1. get a queryset 
+    2. convert queryset to object or list 
+    3. convert object to json using JsonResponse
 
 #### 1. Regular serializer
-**Serialization**: process of converting complex data types (such as Django models or querysets) into a format that can be easily rendered into JSON
-**Deserialization**: process of converting JSON into a Python object
-In django-core for serialization we have 3 steps: 1. get a queryset 2. convert queryset to object or list 3. convert object to json using JsonResponse
+
++ reqgular serializer is for manual definition of all fields and validation logic
+
 ```py
 # serializer.py
 from rest_framework import serializers                 # with regular serializer we should map everything manually
 
 class BookSerializer(serializers.Serializer):          # serializer is a class inherited from method 1. regular Serializer
-    id = serializers.IntegerField(read_only=True)       # read_only means it can not be updated
-    name = serializers.CharField(max_length=100)        # we can use validators [serializer level validations]
-    active = serializers.BooleanField()                 # these property names should be same as in model
+    
+    # 1. Common Field Types                            # similar to Field Types in Models
+
+    name = serializers.CharField(max_length=100)                   # text field
+    age = serializers.IntegerField()                                # 
+    is_active = serializers.BooleanField()
+    price = serializers.DecimalField(max_digits=5, decimal_places=2)
+    metadata = serializers.DictField()
+    tags = serializers.ListField(child=CharField())
+    # these property names should be same as in model
     # if we dont mention a field of model in serializer, that field wont map and we can not see that in the output
+    my_custome_filed = serializers.CharField(default="me", read_only= True)   # custome field can be not existed in model
+
+    #  2. Field Options                                               # serializer level validations
+
+    id = serializers.IntegerField(read_only=True)                       # read_only means it can not be updated (default: False)
+    name = CharField(required=False)                                  # Is field required? (default: True)
+    password = CharField(write_only=True)                              # Field is write-only (default: False)
+    active = BooleanField(default=True)                                   # default value
+    middle_name = CharField(allow_null=True)                                # Allow None as value (default: False)
+    user_email = EmailField(source='user.email')                            # Attribute name on model (another name filed)
+    score = IntegerField(validators=[validate_score])                      # Custom validators
+    rating = sesrializers.PositiveIntegerField(validators= [MinValueValidator(1), MaxValueValidator(5)])   # import django.core.validators
+    name = CharField(error_messages={'blank': 'Please enter your name'})     # Custom error messages
+    dob = DateField(label='Date of Birth')                                   # Human-readable label
+    notes = CharField(help_text='Additional information')                     # Descriptive text
+
+    # 3. Common Methods for customizing
+
+    def to_internal_value(self, data):                                # Get the value before validation
+        # Transform data before validation
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):                            # Get the value for representation
+        # Transform data before returning response
+        rep = super().to_representation(instance)
+        rep['custom'] = "value"
+        return rep
+
     def create(self, validated_data):                    # create method for 'POST' method in order to deserializing data
         return Book.objects.create(**validated_data)      # using Model for save to database     
         # we must impleament these methods otherwise we get error for post request
         # validated_data gets data from queryset inside views:   serilizer = BookSerializer(queryset)
         # The **validated_data syntax unpacks the dictionary into keyword arguments
+
     def update(self, instance, validated_data):          # update method for 'PUT' method in order to deserializing data
         instance.name = validated_data.get('name', instance.name)   # update 'name' of instance if the 'name' existed in the instance
         instance.active = validated_data.get('active', instance.active)   # validated_data is the dict of new data
         instance.save()    # instance is the old object in the database
         return instance    # instance and validated_data comes from views: serilizer = BookSerializer(queryset, data= req.data)
+
+    def validate_first_name(self, value):                      # Filed level validations   # read 'serializers validation'
+        pass                                                # ['validate' + PROPERTYNAME]
+
+    def validate(self, data):                            # Object level validations         # read 'serializer validations'
+        pass                                               # def validate()
 ```
 
-### Serializer Validations
-we have 3 types of validations: 1. Filed level validations 2. Object level validations 3. Serializer level validations
-```py
-from django.core.validators import MaxValueValidator, MinValueValidator   # value fo int (not length for string)
-# validatros is equal for both ModelSerializer and  regular serializer
-class BookSerializer(serializers.Serializer):          # Each 'Serializer Filed' has 'core arguments' like read_only, write_only, required, ...
-    id = serializers.IntegerField(read_only=True)       # serializer level validations  
-    name = serializers.CharField(max_length=100)        # serializer level validations
-    my_custome_filed = serializers.CharField(default="me", read_only= True)   # custome field can not be existed in our model and db
-    description = serializers.CharField(validators=[myfunction])    # validator function (serializer level validations)
-    rating = sesrializers.PositiveIntegerField(validators= [MinValueValidator(1), MaxValueValidator(5)])   # serializer level validations
-    # in this exmaple name is required bcz it  does not have a default value, so if our request does not contain it we get error    
-    def validate_name(self, value):                      # Field level validations for specific property (validate_FILEDNAME)
-        if len(value) < 3:     # value is the value of name attribute
-            raise serializers.ValidationError("Name is too short")  # return a json {name: "Name is too short"}
-        else:                                         # this validations only work for post or put requests (not get request)
-            return value
-    
-    def validate(self, data):                            # Object level validations [we access all properties]
-        if data['name'] == data['active']:              # data is obj
-            raise serializers.ValidationError("Name can not be same as active")   # send a json {non_field_errors: "Name can not ..."}
-        else:
-            return data
 
-def myfunction(value):   # function outside the class
-    if len(value) < 10:   # no need for return in validatros function
-        raise serializers.ValidationError("Description is too short")   # raise not return
-```
 #### 2. ModelSerializer
+
+The ModelSerializer class is the same as a regular Serializer class, except that:
+
+It will automatically generate a set of fields for you, based on the model.
+It will automatically generate validators for the serializer, such as unique_together validators.
+It includes simple default implementations of .create() and .update().
+
 ```py
-class BookSerializer(serializers.ModelSerializer):   # there is no need to create() and update() anymore
+class BookSerializer(serializers.ModelSerializer):   
+
+    # 1. Field Options
 
     full_name = serializers.SerializerMethodField(read_only=True)    # custom field 
-    first_name = serializers.CharField(mex_length=50)   # we can override fields if we want in ModelSerializer like regular serializer
+    first_name = serializers.CharField(mex_length=50)                # override fields in ModelSerializer like regular serializer
+    user_email = serializers.EmailField(source='user.email')          # chane name 
     # if you dont use read_only for custome fields it gets error for post request bcz this field is not in db
-    class Meta:                         # with ModelSerializer default Fields with default validatros will be mapped automatically
-        model = Book                     # in regualt serializer we do not introduce the model
+    # there is no need to override fields but you can do it
+
+    # 2. Class Meta                        # required
+
+    class Meta:                         # with ModelSerializer default Fields with default validatros will be mapped automatically like model
+        model = Book                     # in regualr serializer we do not introduce the model
         fields = '__all__'               # all fields will be serialized
         fields = ['first_name', 'active']     # only these fields will be serialized 
         exclude = ['rating']             # these fields will not be serialized [we can not use 'exclude' with 'fields' together]         
-    
-    def get_full_name(self, obj):                      # SerializerMethodField should start with ['get_' + PROPERTYNAME ]
-        return obj.first_name + " " + obj.last_name      # we access all properties with 'obj'
+        depth = 1                         # optioanl: depth for nested relations
+        read_only_fields = ['created_at']   # optional: fields that are read-only
+        extra_kwargs = {'password': {'write_only': True}}    # validation for additional field kwargs ??????????
+       
+    # 3. Common methods for customizing                 
 
-    def validate_first_name(self, value):                      # Filed level validations like Regular Serializer
+    def get_full_name(self, obj):                        # SerializerMethodField  [ def 'get_' + 'filedname']
+        return obj.first_name + " " + obj.last_name      # we access all properties with 'obj'
+        # we should mention this filedname in meta class  fields = ['age', 'full_name']
+        # we should introduce this field in 'Field Options' with 'SerializerMethodField'
+
+    # there is no need to create() and update() anymore ????????????
+
+    def validate_first_name(self, value):                      # Filed level validations   # read 'serializers validation'
         pass                                                # ['validate' + PROPERTYNAME]
 
-    def validate(self, data):                            # Object level validations like Regular Serializer
-        pass
-```
-#### Serializer relations
-```py
-class AuthorSerializer(serializers.ModelSerializer):  # nested serializer 
-    # inside Book model: author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='books')
-    books = BookSerializer(many=True, read_only=True)    # books is related_name inside Book model   # return whole content of obj
-    books = serializer.StringRelatedField(many=True)              # __str__ from Book model
-    books = serializer.PrimaryKeyRelatedFiled(many=True, read_only=True)           # id from Book model obj
-    books = serilaizer.HyperLinkRelatedFiled(many=True,read_only=True, view_name='from_urlpatterns')   # link  to Book model object(forien key)
-    # read_only means we can not update it with post method
-    class Meta:                       # (many= True) means return an array of objects
-        model = Author               # one book have one author but author can have many books
-        fields = '__all__'           # books is not a model field for author
-        depth = 1                     # shows nested object instead of id  [makes trouble for post request]
-
-class BookSerializer(serializers.ModelSerializer):   # nested serilaizer
-    author_obj = serializer.SerializerMethodField()  #  custom field
-    class Meta:     # inside Book model we have a foreign key and besides thad id we want to show the whole object
-        model = Book           # insted of 'get_author_obj' we can just use 'depth = 1'
-        fields = '__all__'
-
-    def get_author_obj(self, obj):                      # get_   
-        return AuthorSerializer(obj.author).data        # return whole content of obj by passing the id
+    def validate(self, data):                            # Object level validations         # read 'serializer validations'
+        pass                                               # def validate()
 ```
 
-## 3. HyperLinkedModelSerializer
+### 3. HyperLinkedModelSerializer
 ```py
 class BookSerializer(serializer.HyperLinkedModelSerializer):   # very similar to ModelSerializer
     class Meta:             # insted of id, it creates a link 
        model: Book          # we need to add context={'request': request} when we initialise the serializer in View
        fields = '__all__'   # we need to cretae a specific url in urlpatterns with a specific View for hyperlink
 ```
-### User Model
+
+### Serializer Validations
+
++ validatros is equal for both ModelSerializer and  regular serializer
++ we have 3 types of validations: 
+    1. Serializer level validations
+    2. Filed level validations 
+    3. Object level validations 
+
 ```py
-from django.contrib.auth.models import User    # using user model in models as field
+class BookSerializer(serializers.Serializer):          
+
+    # 1. serializer level validations
+    id = serializers.IntegerField(read_only=True)                 # Each 'Serializer Filed' has 'core arguments' like read_only, required, ...
+    firstname = serializers.CharField(max_length=100)               # mostly in reqular serializers
+    description = serializers.CharField(validators=[myfunction])    # validator function outside the class
+
+    # 2. Field-level validation                           # def validate_fieldname()
+    def validate_firstname(self, value):                      # Field level validations for specific property
+        if len(value) < 3:                                   # value is the value of name attribute
+            raise serializers.ValidationError("Name is too short")  # return a json {name: "Name is too short"}
+        else:                                         # this validations only work for post or put requests (not get request)
+            return value                                # firstname becomes required bcz it does not have a default value
+        # the syntax structuse is like a boilerplate for all Field-level validations
+
+    # 3. Object-level validation
+    def validate(self, data):                                                           #  we access all properties
+        if data['firstname'] == data['lastname']:                                      # data is obj or instance of model
+            raise serializers.ValidationError("Firstame can not be same as lastname")   # send a json {non_field_errors: "Name can not ..."}
+        else:                                   # the syntax structuse is like a boilerplate for all Object-level validations
+            return data
+
+def myfunction(value):                                                 # function outside the class
+    if len(value) < 10:                                                 # no need for return in validatros function
+        raise serializers.ValidationError("Description is too short")   # raise but not return
+```
+
+
+#### Serializer relations
+
+
+##### 1. Depth
+
++ `depth` means the depth of relationships that should be traversed before reverting to a flat representation.
+
+```py
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = ['id', 'title', 'author']
+        depth = 1          # shows nested object instead of id  [makes trouble for post request]
+
+# no depth
+{
+    "title": "Django Book",
+    "author": 1
+}
+# with depth
+{
+    "title": "Django Book",
+    "author": {
+        "name": "ali",
+        "age": "20"
+    }
+}
+```
+
+
+##### 2. reverse relationship
+
+```py
+# inside Book model: author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='books')
+# Author has many Books, Book has one author (book has foreign key). we can show the list of all books of an author.
+
+# 1. way 1 for reverse relationship
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author                                        # by this way we see ids of books
+        fields = ['id', 'name', 'age', 'books']             # books is related_name in Book model
+        depth = 1                                             # show nested object (book)
+
+# 2. custome way for reverse relationship
+class AuthorSerializer(serializers.ModelSerializer):                        # books is related_name in Book model
+    books = serializers.PrimaryKeyRelatedField(many=True, read_only=True)   # 1. return ids of books
+    books = BookSerializer(many=True, read_only=True)                       # 2. return whole content of books (this called nested serializer)
+    books = serializer.StringRelatedField(many=True)                        # 3. __str__ from Book model
+    books = serializers.SlugRelatedField(many=True,read_only=True,slug_field='title')  # 4. specific field from Book model 
+    books = serilaizer.HyperLinkRelatedFiled(many=True,read_only=True, view_name='from_urlpatterns')   # 5. link to Book model object(forien key)
+    books = serializers.PrimaryKeyRelatedField(                # 1. we can use queryset for validations
+        queryset=Book.objects.all(),                      # queryset is required for write operation (POST,...)
+        many=True                                           # For many-to-many or reverse FK (default: False)
+    )   # set eather queryset or read_only=True              # read_only means we can not update it with post method
+
+    class Meta:                       
+        model = Author               
+        fields = '__all__'                                 # books is not a model field for author so no included in __all__
+        fields = ['id', 'name', 'age', 'books']             #  do not forget to add books here
+```
+
+#### 3. Nested reverse relationship
+
++ inside Book model we have a foreign key for author, and inside author we have books (reverse relationship)
+
+```py
+class BookSerializer(serializers.ModelSerializer):   
+    author_obj = serializer.SerializerMethodField()     #  custom field with SerializerMethodField
+    class Meta:     
+        model = Book        
+        fields = '__all__'
+
+    def get_author_obj(self, obj):                      # get_   
+        return AuthorSerializer(obj.author).data        # return whole content of obj by passing the id
+```
+
+
+## Views
+
+### FBV (function base view) 
+
+```py
+from rest_framework.response import Response               # most important thing you should know is useing @api_view
+from rest_framework.decorators import api_view               # error: .accepted_renderer not set on Response
+
+@api_view(['GET','PUT','DELETE'])                           # decorator is necessary for FBV   
+def book_list(request,pk):                                  # FBV without decorator gives 'AssertionError' for .accepted_renderer
+    if request.method == 'GET':                             # @api_view handles unsupported methods with a `405 Method Not Allowed` response.
+        try:                                                 # if any books does not find we get error
+            books = Book.objects.all()                       # Get a queryset of books in the form of model instance (complex data)
+            book_list = Book.objects.values()               # Get qyueryset of books in the form of dictionary
+            serializer = BookSerializer(books, many=True)   # Serialize the queryset to object  # use many when we have more than one data
+            return Response(serializer.data)               # not set 'many=True' : Got AttributeError when attempting to get a value for field       
+            return JsonResponse(books)                     # alternative way for serializer: we can use JsonResponse in django-core
+        except ObjectDoesNotExist:              
+            return Response({"error": "Books do not exist"}, status=404)
+
+    if request.method == 'PUT':                                     # PUT is for update all fields
+        book = Book.objects.get(pk=pk)                               # Get pk from url
+        serializer = BookSerializer(book, data=request.data)         # Deserialize the data with (old data, new data) or (queryset, data)
+        if serializer.is_valid():
+            myvar = serializer.validated_data['active']               # we can access validated data using dictionary
+            serializer.save()
+            return Response(serializer.data)                         # status code is 200 by default
+        else:
+            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'DELETE':
+        book = Book.objects.get(pk=pk)                                # Get the book for deleting
+        book.delete()                                                 # call delete from model
+        return Response(status=status.HTTP_204_NO_CONTENT)            # 204 is for succuesfully no content
+```
+
+
+### CBV (1. APIView)
+
++ `APIView` is the base class in DRF for all class based views.
++ its very similar to FBV
++  It provides more control and flexibility compared to DRF's `higher-level views` (like GenericAPIView or ViewSets).
+
+```py
+from rest_framework.views import APIView                 # we dont need @api_view decorators like function based
+class BookList(APIView):                                 # class base view inherit from APIView 
+
+    def get(self, request):                            # GET method 
+        books = Book.objects.all()                     # get all querysets
+        serilizer = BookSerializer(books, many=True)   # serialize the queryset by passing the queryset
+        return Response(serializer.data)                # status is 200 by default
+        # many=True is required when serializing a queryset or list
+
+    def post(self, request, pk):                        # POST method 
+        print(request.data)                             # request.data is a dictionary of sending data 
+        print(request.query_params.get('param'))         # accessing query params
+        serilizer = BookSerializer(data=request.data)    # deserialize the data
+        if serializer.is_valid():                       # if we want to create an object with serializer we should use 'data=' as an argument
+            serializer.save()                            # this is a boilerplate syntax for POST, PUT, PATCH, DELETE
+            return Response(serilizer.data)            
+        else:
+            return Response(serializer.errors, status=400)
+
+    def put(self, request, pk):                          # Full update
+    def patch(self, request, pk):                        # Partial update
+    def delete(self, request, pk):                        # Delete
+        book = Book.objects.get(pk=pk)
+```
+
+
+### CBV (2. using mixins)
+
++ The mixin classes provide specific view behavior by `action methods` not `handler methods`
++ in `mixin views` we dont need handlers like get(), post(), etc like `APIView`
++ `mixin views`  in browsable API creates 'HTML form' and 'Raw data'
++ 
++ we need to inherit from some mixin views:
+    1. ListModelMixin               GET       List objects               .list()
+    2. CreateModelMixin             POST      Create objects             .create()
+    3. RetrieveModelMixin           GET       Retrieve singel object     .retrieve()
+    4. UpdateModelMixin             PUT       Full update                .update()
+    5. DestroyModelMixin            DELETE    Delete                     .destroy()
+    6. PartialUpdateModelMixin      PATCH     Partial update             .partial_update()
+
++ list(), create(), retrieve(), and so on are action methods
++ GenericAPIView extends APIView (check DRF source)
++ DRF provides pre-combined views using these mixins called `Generic Views`
++ `mixins` have lots of repeated  boilerplate code, its better to use `Generic Views`
+
+```py
+# 1. example for .list() .create()
+from rest_framework import mixins, generics
+class BookList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
+    # for using mixins we need to inherit from GenericAPIView in the last
+    queryset = Book.objects.all()                    # queryset is a keyword for the class otherwise we should override the `get_queryset()` method
+    serializer_class = BookSerializer                # serializer_class is a keyword for the class otherwise override the `get_serialiser()` method
+                                                    # there is no need for passing something to serializer like APIView
+    def get(self, request, *args, **kwargs):          # you should implement get() method for GET request and use action methods in that
+        return self.list(request, *args, **kwargs)   # .list() is for list of objects and .retrive() is for single object
+    def post(self, request, *args, **kwargs):         # .list() and .create() are action methods
+        return self.create(request, *args, **kwargs)  # .create() .update() .partial_update() .destroy()
+
+# 2. example for .retrieve()
+class BookDetail(mixins.RetrieveModelMixin, generics.GenericAPIView):
+    queryset = Book.objects.all()           
+    serializer_class = BookSerializer                   # writing get() and post() method in mixins is a boilerplate
+    def get(self, request, *args, **kwargs):            #  pk should send in http params
+        pk = kwargs.get('pk')                           # there is no need for doing this (getting pk from url)
+        return self.retrieve(request, *args, **kwargs)  # just use .retrieve() instead of geting pk from url
+```
+
+
+### CBV (3. using generics)
+
++ generic views provide pre-built solutions for common API patterns
++ generic views:
+    1. ListAPIView 
+    2. CreateAPIView 
+    3. RetrieveAPIView 
+    4. UpdateAPIView
+    5. DestroyAPIView
+
++  combination:
+    1. ListCreateAPIView
+    2. RetrieveUpdateAPIView
+    4. RetrieveDestroyAPIView
+    3. RetrieveUpdateDestroyAPIView
+
++ Generic views reduce the amount of boilerplate code needed to write rather than mixins
++ for example, ListCreateAPIView already have 'def get(self, req, *args, **kwargs)' section inside its implementation (check DRF source)
+
+```py
+# 1. list
+class BookList(generics.ListCreateAPIView):    # from rest_framework import generics         
+    queryset = Book.objects.all()               # there is no need for handler methods or action methods 
+    serializer_class = BookSerializer           # there is no need for Response and HTTP_Code
+
+# 2. detail
+class BookDetail(generics.RetrieveUpdateDestroyAPIView):  # mixed one  # get(), update(), delete()
+    queryset = Book.objects.all()                        # just send an id in http params
+    serializer_class = BookSerializer
+
+# 3. list
+class ActiveBookListView(generics.ListAPIView):
+    serializer_class = BookSerializer
+    
+    def get_queryset(self):                         # instead of 'queryset' we can override it for customazation
+        return Book.objects.filter(is_active=True)  
+
+# 4. list + create
+class BookList(generics.ListCreateAPIView):    
+    serializer_class = BookSerializer              # overwriting list()
+    def get_queryset(self):                        # instead of 'queryset' we can override it for customazation
+        pk = self.kwargs.get('pk')                 # queryset handles extracting pk from url params by default
+        return Book.objects.filter(author=pk)      # we can add some logics for customization
+
+    def perform_create(self, serializer):  # overwriting create()           # perform_update(), perform_destroy()
+       pk = self.kwargs.get('pk')           # no need for request.data
+       author = Author.objects.get(pk=pk)   # in seriliazer we need to exclude author bcz we get if from url (no need for mapping)
+       serializer.save(author=author)      # pk is inside url not in request.data
+```
+
+### CBV (4. using ViewSet)
+
++ in generic views we should write multiple classes but in `viwesets` we can handle everything inside one class 
++ viewsets does not porvide `.get()` and `.post()` handlers, and instead porvides `.list()` and `.retrieve()` actions.
++ `ViewSet` in DRF is a high-level abstraction that combines the logic for multiple views into a single class
++ since `ViewSet` and `ModelViewSet` generate multiple urls for a single view class we should register the view class in `urls.py`
+
+
+```py
+from rest_framework import viewsets        
+class BookViewSet(viewsets.ViewSet):  
+    def list(self, request):                                   # 1. list
+        books = Book.objects.all()             
+        serializer = BookSerializer(books, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk):                           # 2. detail 
+        book = Book.objects.get(pk=pk)
+        serializer = BookSerializer(book)
+        return Response(serializer.data)
+
+    def create(self, request):                                 # 3. create for POST method
+        serializer = BookSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+    def update(self, request, pk):                             # 4. update for put method
+    def partial_update(self, request, pk):                     # 5. patch method
+    def destroy(self, request, pk):                             # 6. delete method
+
+    # we can add more action methods using @action            # 7. custom action method
+    @action(detail=False, methods=['get'])                    # detail=False operates on all objects like list()
+    def sales(self, request):                                 # detail=True operates on single object with passing pk in url like retrieve()
+        # Custom action logic                                 # methods=['get', 'delete'] we can apply multiple methods
+        return Response({"data": "Sales report data"})       # url: http://127.0.0.1:8000/books/sales/     # generate a new url for the action
+                                                             # url name comes from method name 
+    
+    @action(detail=True, methods=['post'], url_path='marked', url_name='sales-array', permission_classes=[IsAdmin])
+    # url_path for customiseing url segment at the end after pk like /books/{pk}/marked insted default: /books/1/sales
+    # url_name for url reverse name like in urls.py which used by reverse() function
+```
+
+
+### CBV (4. using ModelViewSet)
+
++ since `ViewSet` and `ModelViewSet` generate multiple urls for a single view class we should register the view class in `urls.py`
+
+```py
+# 1. ModelViewSet
+class BookViewSet(viewsets.ModelViewSet):                # ModelViewSet provides all CRUD methods
+    """
+    A ViewSet for viewing and editing book instances.
+    This single class provides all methods automatically:
+    - List (GET /books/)
+    - Create (POST /books/)
+    - Retrieve (GET /books/1/)
+    - Update (PUT /books/1/)
+    - Partial Update (PATCH /books/1/)
+    - Destroy (DELETE /books/1/)
+    """
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+
+# 2. read only ModelViewSet
+class BookViewSet(viewsets.ReadOnlyModelViewSet):         # ReadOnlyModelViewSet provides only list() and retrieve()
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+```
+
+
+###### Routers (registering ViewSet urls)
+
++ after creating viewset we need to register it with routers in urlpatterns bcz it manages multiple urls at the same time
+
+```py
+from rest_framework import routers                               # routers help us to combine urls
+router = routers.DefaultRouter()                                 # create a router
+router.register('books', BookViewSet.as_view(), basename='book')    # register
+urlpatterns = [                                                    # both /books + /books/12 are available by this way
+    path('url/',BookListView.as_view(), name="book-list"),         # normal CBV url
+    path('', include(router.urls))                                # empty string
+]                                                                # we can add "-list" and "-detial" at the end of names_url for viewsets
+```
+
+
+### CBV (5. all)
+
+| Feature          | APIView           | GenericAPIView    | ViewSet            | ModelViewSet       | FBV                |
+|------------------|-------------------|-------------------|--------------------|--------------------|--------------------|
+| **Control**      | Full              | Moderate          | Convention-based   | Least (Auto CRUD)  | Full               |
+| **Boilerplate**  | Most              | Less              | Least              | None (Auto impl.)  | None               |
+| **URL Routing**  | Manual            | Manual            | Router             | Router             | Manual             |
+| **HTTP Methods** | Manual impl.      | Mixin-based       | @action decorator  | Auto CRUD methods  | Manual impl.       |
+| **Best For**     | Custom endpoints  | Standard CRUD     | Custom REST routes | Full auto CRUD API | Simple endpoints   |
+
+
+### User Model
+
++ `User Model` in Django is the core representation of user accounts in your application.
++ its recommended to create a separate app for 'User Model': `python manage.py startapp userapp`
++ its recommended since we can have separate 'urls', 'serializers' and 'views' for User Model
++ It handles:
+    1. Authentication (login/logout)
+    2. Authorization (permissions)
+    3. User profile (using `User Model` in other models as field)
+    - in this part we will focus on number3 : `User Model` in other models
+    
+
+```py
+# 1. default User Model Key fields
+from django.contrib.auth.models import User
+
+username = models.CharField(max_length=150, unique=True)
+email = models.EmailField(blank=True)
+password = models.CharField(max_length=128)  # Hashed
+first_name = models.CharField(max_length=30, blank=True)
+last_name = models.CharField(max_length=150, blank=True)
+is_active = models.BooleanField(default=True)
+is_staff = models.BooleanField(default=False)
+is_superuser = models.BooleanField(default=False)
+
+
+# 2. Custom User Model
+from django.contrib.auth.models import AbstractUser                     # models.py
+
+class CustomUser(AbstractUser):
+    phone = models.CharField(max_length=15, blank=True)                  # Add phone field 
+    profile_pic = models.ImageField(upload_to='profiles/', null=True)    # Add profile_pic field
+    
+    USERNAME_FIELD = 'email' # Replace username with email
+    REQUIRED_FIELDS = []  # Removes email from REQUIRED_FIELDS
+
+# settings.py
+AUTH_USER_MODEL = 'userapp.CustomUser'  # Point to your custom model
+
+
+# 3. User Model in other Models
+from django.contrib.auth.models import User    # import User Model
 class Review(models.Model):                  # get user from /admin page for using in other models
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reviews')        
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')      # we should change serializer too
     content = models.TextField()
 
+# 4. View
 class ReviewCreate(generic.CreateAPIView):        # using user model in views
     serializer_class = ReviewSerializer
     def perform_create(self, serializer):
@@ -305,47 +653,118 @@ class ReviewCreate(generic.CreateAPIView):        # using user model in views
 
 
 ### Permissions
-with permissions a stranger can not 'access' your data (restriction)
-we have two levels: 1. setting level(for all links) 2. object level(for specific links)
-django provides 3 types of permissions: 1. IsAuthenticated(log in) 2. IsAdminUser 3. IsAuthenticatedOrReadOnly(only get request for not login users)  4. AllowAny (by default)
-#### permissions: 1.setting level
+
++ with `permissions` a stranger cannot 'access' your data (restriction)
++ `Permissions` determine whether a client should be granted access to a particular endpoint or database object.
++ `Authentication` identifies who is making the request (user) while `Permissions` determine what that user can do (access control)
+
++ we have 3 levels: 
+    1. setting level (for all links) 
+    2. view level   (for specific views)
+    3. object level  (for specific objects)
+
+
+#### permissions: 0. global level
+
++ `global permissions` applies to all DRF views by default but individual views can override the global policy
++ + django provides 4 types of permissions: 
+    1. IsAuthenticated (log in) 
+    2. IsAdminUser 
+    3. IsAuthenticatedOrReadOnly (only GET request for not login users)  
+    4. AllowAny (by default)
+
+
 ```py
-REST_FRAMEWORK = {           # setting.py
-    'DEFAULT_PERMISSION_CLASSES': [       # default = globally accessible
-        'rest_framework.permissions.IsAuthenticated'    # only accessed by logged in users
+REST_FRAMEWORK = {                                            # setting.py
+    'DEFAULT_PERMISSION_CLASSES': [                          # you can set only one permission
+        'rest_framework.permissions.AllowAny'                  # No restrictions (default)
+        'rest_framework.permissions.IsAuthenticated'          # only accessed by logged in users
+        'rest_framework.permissions.IsAuthenticated'         # Requires login
+        'rest_framework.permissions.IsAdminUser'            # Staff/superusers only
+        'rest_framework.permissions.DjangoModelPermissions'  # Ties to Django auth
     ]
 }
 ```
 
-#### permissions: 2. object level
+#### permissions: 1. view level
+
 ```py
 from rest_framework import permissions
-class BookList(generics.ListAPIView):    # class base view
+
+# 1. CBV
+class BookList(generics.ListAPIView):    # CBV generic class
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]   # only accessed by logged in users otherwise read only for everyone
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]   # CRUD accessed by logged in users otherwise read only for everyone
 
-
-@permission_classes([permissions.IsAdminUser])       # decorator is needed for function base view
-@api_view(['GET'])                      #
-def Booklist(request):                  # function base view
+# 2. FBV
+@permission_classes([permissions.IsAdminUser])       # decorator for permission
+@api_view(['GET'])                                   # decorator for method
+def Booklist(request):                              # function base view
    pass 
 ```
-#### custome permissions
-|api\
-|----permissions\
+
+#### permissions: 2. object level
+
++ `object-level permissions` checked after `view-level permissions` pass
++ `object-level permissions` are used to restrict access (not just to views) to individual objects
++ example:  allow only users to update their own posts
++ we have no built-in `object-level permissions` by default so we should write a custom permission for this level
++ in custome permissions `def has_object_permission` is responsible for this
+
 ```py
-from rest_framework import permissions       # for customazation we can override two methods
-class AdminOrReadOnly(permissions.IsAdminUser):    # my custome permission   # we can inherit fomr BasePermission or so on
-    def has_permission(self, request, view):
-        base_permission = super().has_permission(request, view)             # check default permission that inherit from parent
+# permissions.py
+from rest_framework import permissions                            # famous example
+class IsOwner(permissions.BasePermission):                        # create a custome permission for object-level
+    """
+    Custom permission to only allow owners of an object to edit or delete it.
+    """
+
+    def has_object_permission(self, request, view, obj):         # object-level customising
+        return obj.owner == request.user
+
+# views.py
+from rest_framework.permissions import IsAuthenticated
+from permissions import IsOwner
+
+class PostDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer                     # IsAuthenticated is a built-in permission for view-level permission
+    permission_classes = [IsAuthenticated, IsOwner]       # check user login AND ownership
+```
+
+#### custome permissions
+
++ to impleant custome permission we can implement two methods: `has_permission` and `has_object_permission`
++ `has_permission` runs before the view is called and checks general permissions and only access to the req and view
+
+
+```
+|api\
+|----permissions\              # custome permissions
+```
+
+```py
+from rest_framework import permissions              # we can inherit from BasePermission or pre built permissions
+
+# example 1
+class AdminOrReadOnly(permissions.IsAdminUser):    # my custome permission    # this example is very famouse 
+
+    # 1. has_permission
+    def has_permission(self, request, view):                                # no access to object
+        base_permission = super().has_permission(request, view)             # check default permission inherited from parent
         admin_permission = bool(request.user and request.user.is_staff)     # check if the user is admin or not  (is_staff means admin)
-        return admin_permission or request.method == 'GET'   # admin or readonly
-        if request == 'DELETE':                        # we can customize for specific methods
-            return True                             # request.user returns 'AnonymousUser' or username
-        if request.user.username = "mohamad":        # check specific users
-        if request.user.IsAuthenticated:             # check authentication
+        return admin_permission or request.method == 'GET'                  # admin or readonly
+
+    # 2. has_object_permission
+    def has_object_permission(self, request, view, obj):                    # check real life example in example 2
+        if request == 'DELETE':                                             # we can customize for specific methods
+            return True                                                     # request.user returns 'AnonymousUser' or username
+        if request.user.username = "mohamad":                               # check specific users
+        if request.user.IsAuthenticated:                                    # check authentication
         # has_permission runs before the view is called and checks general permissions and only access to the req and view but not object
+
+# example 2
 class ReviewUserOrReadOnly(permissions.BasePermission):      # has_object_permission runs after the view gets the specific object
     def has_object_permission(self, request, view, obj):     # object-level : permissions for a specific 'model' instance
         if request.method in permissions.SAFE_METHODS:          # SAFE_METHODS is GET
@@ -355,79 +774,198 @@ class ReviewUserOrReadOnly(permissions.BasePermission):      # has_object_permis
 ```
 
 ### Temporary login
+
 ```py
 urlpatterns = [   # Authentication 
     path('api-auth/', include('rest_framework.urls'))         # create a temp login for normal users and superusers
 ]  # adds /appName/api-auth/login/
 ```
+
 ### Authentication
-Authentication by itself wont allow or disallow an incoming request.
-Authentication is the process of verifying the user by checking if the credentials are correct.
-There are 3 types of authentication: 1. SessionAuthentication 2. TokenAuthentication 3. BasicAuthentication(only for testing)
-JWTAuthentication is a third-part package which is importnat
+
++ `Authentication` is the process of `verifying the user` by `checking the credentials`
++ `Authentication`: How are you?
++ `Authorization`: 	What are you allowed to do? (permissions like  Accessing admin dashboard)
++ `Authentication` by itself wont allow or disallow an incoming request
+
++ There are 3 types of built-in authentication in DRF: 
+    1. SessionAuthentication 
+    2. TokenAuthentication 
+    3. BasicAuthentication (only for testing)
+    + JWTAuthentication is a third-part package
+
++ Methods of Authentication in programing:
+    1. Username & Password         	Most common method
+    2. Token Authentication	        Use a secret token (like an API key)
+    5. Session Authentication	    Stores login info in session cookies
+    3. JWT (JSON Web Token)	        Encodes user identity in a signed token
+    4. OAuth	                    Auth via third-party like Google, GitHub
+    6. Biometric	                Face ID, fingerprint, etc. (on mobile apps)
+
+
+```py
+REST_FRAMEWORK = {                                              # setting.py     # use only one of these classes
+    'DEFAULT_AUTHENTICATION_CLASSES': [                         # apply to all view classes globally
+        'rest_framework.authentication.BasicAuthentication',    # For testing          
+        'rest_framework.authentication.SessionAuthentication',  # For browsable API    
+        'rest_framework.authentication.TokenAuthentication',    # For token-based
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [                             # after authentication class
+        'rest_framework.permissions.IsAuthenticated',           # set permission class to IsAuthenticated
+    ],
+}      
+```
+
 
 #### 1. Basic Authentication
+
++ It uses Base64-encoded string username/password sent on every request headers.
++ Not secure over HTTP, use only for testing
++ inside Headers:---> `Authorization: Basic <base64 encoded username:password>`
++ we can use postman and browser     
++ we get 401 error if we do not send headers
++ globally apply for `permission_classes = [permissions.IsAuthenticated]`
+
+
+#### 2. Session Authentication
+
++ `SessionAuthentication` uses Django’s built-in session framework to identify users
++ This is useful for users who are logged in via the web interface (like Django Admin or a login view)
++  Browsable API	Works well with DRF’s HTML interface
++  	Enforces CSRF validation for security
++   Uses Django’s session & login views
++    Not for mobile/API clients
++ Stores login info in session cookies
+
+
+### 3. Token Authentication
+
++ stateless authentication which No sessions or cookies needed
++ each user is assigned a unique token.
++ This token must be sent with every request ( in Authorization header)
++ Mobile & API clients	Works great for non-browser clients
++ globally apply for `permission_classes = [permissions.IsAuthenticated]`
++ after adding to INSTALLED_APPS: `python manage.py migrate`
+
 ```py
-REST_FRAMEWORK = {        # setting.py   # 1. BasicAuthentication uses base64 method
-    'DEFAULT_AUTHENTICATION_CLASSES': [          # apply to all view classes
-        'rest_framework.authentication.BasicAuthentication'   # globally apply for permission_classes = [permissions.IsAuthenticated]
-    ]  # inside Headers:---> Authorization: Basic <base64 encoded username:password> 
-}  # we can use postman and browser     # we get 401 error if we do not send headers
+REST_FRAMEWORK = {                                             # setting.py   
+    'DEFAULT_AUTHENTICATION_CLASSES': [                        # apply to all view classes
+        'rest_framework.authentication.TokenAuthentication'    # globally apply for permission_classes = [permissions.IsAuthenticated]
+    ]                                                          # Token Authentication uses token db system
+}  
+INSTALLED_APPS = [                                             # base requirement for django rest
+    'rest_framework',                                          # no need for userapp, just authtoken
+    'rest_framework.authtoken',                                # token based authentication      
+]                                                              # manage.py migrate  ---> bcz it creates a new table that is going to store tokens
 ```
 
-### 2. Token Authentication
++ there is 2 option for creating tokens:
+    1. Model Token   (we use this for registering since we dont want to transfer user to login page after registering)
+    2. Automatically via Login View   
+
 ```py
-REST_FRAMEWORK = {        # setting.py   2. Token Authentication uses token db system
-    'DEFAULT_AUTHENTICATION_CLASSES': [          # apply to all view classes
-        'rest_framework.authentication.TokenAuthentication'   # globally apply for permission_classes = [permissions.IsAuthenticated]
-    ]  # inside Headers:---> Authorization: Token <token>
-}  
-INSTALLED_APPS = [              # base requirement for django rest
-    'rest_framework',               # no need for userapp, just authtoken
-    'rest_framework.authtoken',     # token based authentication      
-] # manage.py migrate  ---> bcz it creates a new table that is going to store tokens
+# 1. Model Token
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+
+user = User.objects.get(username='youruser')
+token, created = Token.objects.get_or_create(user=user)
+print(token.key)
+
+# 2. login view
+urlpatterns = [
+    path('login/', obtain_auth_token),   
+]
 ```
+
 
 ###### a. Login
-First create a new app: userapp
+
++ First create a new app (userapp) with this Structure: `python manage.py `
+
+```
 userapp\
 |---api\
 |   |---views.py
 |   |---urls.py
 |   |---serializers.py
+```
+
++ `obtain_auth_token` is not a browsable page like a login page 
++ unlike obtain_auth_token, `temporary login` (api-auth/) creates a login page
++ `obtain_auth_token` creates a link for sending form-data
++ inside Headers:---> `Authorization: Token <token>`
++ with POST method it accepts in the body a pair of (username + password) and in response gives us a token
++ we use this token for our requests
+
 ```py
-from rest_framework.authtoken.views import obtain_auth_token   # its a login non-browsable link that we can send our request
-urlpatterns = [      # its not a login page (Browsabel api) like temporary login (api-auth/)
-    path('account/',include('userapp.api.urls')),            # middle url
+from rest_framework.authtoken.views import obtain_auth_token   
+urlpatterns = [                                                
+    path('account/',include('userapp.api.urls')),              # middle url
     path('login/',obtain_auth_token, name= 'login'),           # send formdata to this url [username,password] and gives us token as response
-    # for a pair of (username + password) it gives us a specific token
-    # for any request to get data we should add this token in the header
+    path('register/', RegisterView.as_view()),
+    path('logout/', logout_view),
 ]
 ```
 
-###### b. Registeration
-the process of creating Registeration:
-1. Model:       auto create token
-2. Serializer
-3. View
-4. URL
-
+##### b. Logout
 
 ```py
-from rest_framework import serializers
-from django.contrib.auth.models import User
+@api_view(['POST'])
+def logout_view(request):
+    if request.method == 'POST':                         # delete token in db
+        request.user.auth_token.delete()                 # req.user means current user
+        return Response(status=status.HTTP_200_OK)
+```
 
-class RegistrationSerializer(serializers.ModelSerializer):
-    password2 =serializers.CharField( write_only = True)   # write_only ensures its not included in the response
-    class Meta:                                        # user in django model has 3 fields by deault when we create them
-        model = User                                   # you can write validation for email but by default it is optioanl
+
+
+
+###### b. Registeration
+
+
++ the process of creating Registeration:
+    1. create a serializer
+    2. View
+    3. URL
+    4. create a signal (optional and not important)
+
++  use form-date in post method
+
+```py
+# 1. simple serializer
+
+from django.contrib.auth.models import User                       # User model
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)            # write_only ensures its not included in the response
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password']
+
+    def create(self, validated_data):
+        user = User.objects.create_user(**validated_data)         # create a new user
+        return user
+
+
+# 1. serializer with two password field
+
+from django.contrib.auth.models import User                       # User model
+
+class RegistrationSerializer(serializers.ModelSerializer):        # goal: creating two password field for registration 
+    password2 =serializers.CharField( write_only = True)          # write_only ensures its not included in the response
+
+    class Meta:                                                   # user in django model has 3 fields by deault when we create them
+        model = User                                              # you can write validation for email but by default it is optioanl
         field = ['username', 'email', 'password', 'password2']    # map these fields for recive the post request and respone to it
-        extra_kwargs = {                                        # use form-date in post method
-            'password': {'write_only': True}                  # write_only has 'Required= True' inside it
-        }    # Alternatively we can specify password field explicitly on the serializer class like password2
-    def save(self):    # without overriding save method we get error bcz of password2 is not in the model and django can not save it
-        password = self.validated_data['password']
-        password2 = self.validated_data['password2']
+        extra_kwargs = {                                          # use form-date in post method
+            'password': {'write_only': True}                      # write_only has 'Required= True' inside it and not included in response
+        }    # Alternatively we can specify password field explicitly above on the serializer class like password2
+
+    def save(self):                                               # save() method is for creating a new user 
+        password = self.validated_data['password']                 # without overriding save method we get error 
+        password2 = self.validated_data['password2']              # password2 is not in the model and django can not save it automatically
 
         if password != password2:
             raise serializers.ValidationError({'password': 'Passwords must match'})   # pass a dict
@@ -435,81 +973,132 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if User.objects.filter(email = self.validated_data['email']).exists():
             raise serializers.ValidationError({'email': 'Email already exists'})
         
-        account = User(          # create an instance of User    # another syntax: User.objects.create()
-            email = self.validated_data['email'],     # do not return password and password2
-            username = self.validated_data['username']
+        account = User(                                             # create an instance of User    
+            email = self.validated_data['email'],                   # another syntax: User.objects.create()
+            username = self.validated_data['username']              # do not return password and password2
         )
-        account.set_password(password)         # for hashing
+        account.set_password(password)                              # for hashing
         account.save()
-        return account            # return when you call serializer.save() for post request
+        return account                                              # return when you call serializer.save() for post request
 
-### views.py
-from rest_framework.authtoken.models import Token        
-from user_app import models         # first create a token model and then import  for 'create_auth_token' for placing the snippet code
+# 2. view
+from rest_framework.authtoken.models import Token         # first create a token model in db by "python manage.py migrate"
+from user_app import models                               # import Token  for 'create_auth_token' 
 
 @api_view(['POST'])
-def register_view(request):     # usual view
+def register_view(request):                                           # usual view
     if request.method == 'POST':
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            account= serializer.save()    # returns from serializer save() method
-            data = {         # we should customise the response bcz we want to send token after registration
+            account= serializer.save()                              # returns from serializer save() method
+            token, created = Token.objects.get_or_create(user=user)  # ????
+            data = {                                                # customise the response and send token after registration
                 'username': account.username,
                 'email': account.email,
                 'token': Token.objects.get(user=account).key,    # access key of {'token': 7e4s...}
-                'message': 'Registration Successful'
-            }
-            return Response(data) 
+                'message': 'Registration Successful'             # in register serializer we do not create a token
+            }                                                   # Token() calls 'def create_auth_token()' for creating a token inline
+            return Response(data)                                # inside models we should define 'def create_auth_token()'
         else:
             return Response(serializer.errors)
 
-
-### models.py  ===> Token model ---> this is for auto creating tokens for registreation
-from django.conf import settings        # copy this snippet code from Doc
-from django.db.models.signals import post_save    # generating tokens by using signals
+# 3. signals  (optional and not important)
+# if you want to create an inline token with ('token': Token.objects.get(user=account).key) read this section
+# by this section we can use 'get()' instead of get_or_create() for creating tokens in RegisterView
+# this piece of code is for auto creating tokens when user is created   (create_auth_token)
+# place this snippet code in views or in signals.py and then import signals.py in the views.py
+# copy this snippet code from Doc
+from django.conf import settings        
+from django.db.models.signals import post_save                            # generating tokens by using signals
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
-@reciever(post_save, sender=setting.AUTH_USER_MODEL)         # catch the User's post_save signal.
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:                                   # when a user is created, a token will create also
-        Token.objects.create(user=instance)        # place this snippet code in views
+
+@reciever(post_save, sender=setting.AUTH_USER_MODEL)                       # listan and catch the User's post_save signal
+def create_auth_token(sender, instance=None, created=False, **kwargs):     # def create_auth_token()
+    if created:                                                            # when a user is created, a token will create also
+        Token.objects.create(user=instance)                                
 ```
 
-##### c. Logout
-```py
-@api_view(['POST'])
-def logout_view(request):
-    if request.method == 'POST':             # delete token in db
-        request.user.auth_token.delete()     # req.user means current user
-        return Response(status=status.HTTP_200_OK)
-```
+### 4. JWT Authentication
 
-### 3. JWT Authentication
-`pip install djangorestframework-simplejwt`
-JWT is not depondent on databse like 2. Token Authentication
-The only disadvantage of JWT is that we can not control the tokens from server and db.
-JWT does not need logout, we just need to delete the token from local storage.
++ simplejwt package: `pip install djangorestframework-simplejwt`
++ 
++ JWT is a digitally signed token that proves a user's identity. It’s like a digital passport.
++ a JWT is look like this: `xxxxx.yyyyy.zzzzz`
++ it has 3 parts (all Base64 encoded):
+    1. Header – type of token and signing algorithm
+    2. Payload – user data (claims)
+    3. Signature – verifies that the token is untampered
+
++ JWT is not depondent on databse like 2. Token Authentication
++ The only disadvantage of JWT is that we can not control the tokens from server and db.
++ JWT does not need logout, we just need to delete the token from local storage in frontend.
++ JWTs are not encrypted by default, only signed → don’t store passwords!
++ Always use HTTPS to protect tokens.
++ JWT runs before permissions and throttling
+
+
 ```py
-### settings.py
-REST_FRAMEWORK = {    # setting.py   3. JWT Authentication
+REST_FRAMEWORK = {                                       ### settings.py
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ]        
 }
-SIMPLE_JWT = {                   # override default settings for jwt
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),      # change default
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),         # change default
-    'ROTATE_REFRESH_TOKENS': True,                  # every time we refresh token it will gives us a new token for both
-    'ALGORITHM': 'HS256',                           # we can change algorithm
+SIMPLE_JWT = {                                            # override default settings for jwt
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),        # change default
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),          # change default
+    'ROTATE_REFRESH_TOKENS': True,                        # every time we refresh token it will gives us a new token for both
+    'BLACKLIST_AFTER_ROTATION': True                      # Invalidates old ones
+    'REFRESH_TOKEN_COOKIE_NAME': 'refresh_token',         # change default name
+    'REFRESH_TOKEN_COOKIE_HTTP_ONLY': True,               # Inaccessible to JavaScript
+    'REFRESH_TOKEN_COOKIE_SAMESITE': 'Strict'              # ?
+    'ALGORITHM': 'HS256',                                 # we can change algorithm
 }
-### urls.py
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView    # Doc
+```
+
++ there is 2 option for creating JWT tokens:
+    1. Model RefreshToken:   (we use this for registering since we dont want to transfer user to login page after registering)
+    2. JWT urls:  Automatically via Login View   
+
+##### 1. JWT urls
+
++ How it works?
+    1. Login: User sends a POST request with username & password in the body as form-data to "/api/token/"
+    2. Server responds with JWT containing their identity (a pair of tokens: 1. Access Token, 2. Refresh Token)
+    3. Client stores them in localStorage
+    4. Client sends Access Token in headers for each API call: --->  `Authorization: Bearer <access_token>`
+    5. Server verifies the signature and reads the payload If valid → grant access
+    6. Token Expiration: When the Access Token expires, client gets Response: 401 Unauthorized
+    7. client should use the Refresh Token to request a new Access Token 
+    8. in frontend we should detect 401 error and attempt to refresh the Access Token automatically and finally retry the original request
+    9. backend checks if Refresh Token is still valid or not
+    10. If Refresh Token also expires, user must fully re-authenticate and fronend should redirect to login page
+
++ Access Token vs Refresh Token:
+    + `Access tokens` are short-lived and used to access protected APIs
+    + `Refresh tokens` are long-lived and used to obtain new `Access tokens` when the current ones expire.
+    1. use this formula inside headeras for protected APIs: `Authorization: Bearer ${access token}` 
+    2. send a POST request to /api/token/refresh and write `refresh = ${refresh_token}` inside body with [x-www-form-urlencoded] option
+    3. do not send Refresh Token in the header, use it only in the body
+
+
+
+```py
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView    # Doc      # add this to root urls
 urlpatterns = [   
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),   # pair: Access Token(short term) + Refresh Token(long term)
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  # AT: 5 min + RT: 24 hours
-]  # post request to /api/token ---> form-data: username, password ----> it sends frontend a pair of token ---> save in localstorage
-# use this formula inside headeras for any other apis: `Authorization: Bearer ${access token}` and this token will expire after 5 min
-# post request to /api/token/refresh ---> inside body [x-www-form-urlencoded]: `refresh = ${refresh token}` 
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),     # Login (returns both tokens)
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),    # Get new access token
+]  
+# Response for both:
+# {
+#     "access": "eyJ...",
+#     "refresh": "eyJ..."
+# }
+```
+
+##### 2. JWT views (RefreshToken)
+
+```py
 ### views.py
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -530,31 +1119,48 @@ def register_view(request):
         else:
             return Response(serializer.errors)
 ```
+
+
 ### Throttling
-Throttling are used to limit the number of requests to a resource
+
++ Throttling are used to limit the number of requests to a resource
++ Throttling controls how frequently clients can make API requests
++ we can apply throttling a. globally or b. per view class
++ Throttling types:
+    1. AnonRateThrottle
+    2. UserRateThrottle
+    3. custome
+
++ we can customise throttling in 2 ways:
+    1. User Rate Throttling
+    2. Scoped Rate Throttling
 
 ##### a. Throttling globally
 ```py
-REST_FRAMEWORK = {     # Setting.py
-    'DEFAULT_THROTTLE_CLASSES': [    #There are two types of throttling: 
-        'rest_framework.throttling.AnonRateThrottle',           # 1. annonymous(AnonRateThrottle) 
-        'rest_framework.throttling.UserRateThrottle'            # 2. per user(UserRateThrottle)
-    ],  # DEFAULT_THROTTLE_CLASSES will apply to all view classes globally [comment this one if you dont need]
-    'DEFAULT_THROTTLE_RATES': {   # default rates
-        'anon': '5/day',        # an anon user can send 5 request per day
-        'user': '10/hour'        # scope user + scope anon
-    }                      # after this 5 request per day we get "429 error" (Too Many Request)
-}                            # we should introduce all other cutome throttling
+REST_FRAMEWORK = {                                       # DEFAULT_THROTTLE_CLASSES will apply to all view classes globally 
+    'DEFAULT_THROTTLE_CLASSES': [                        # There are two types of throttling: 
+        'rest_framework.throttling.AnonRateThrottle',    # 1. annonymous(AnonRateThrottle) 
+        'rest_framework.throttling.UserRateThrottle'     # 2. per user(UserRateThrottle)
+    ],  
+    'DEFAULT_THROTTLE_RATES': {                          # default rates
+        'anon': '5/day',                                 # an anon user can send 5 request per day
+        'user': '10/hour'                                # scope user + scope anon
+        'custom': '10/minute'                            # Custom scope (introduce all your cutome throttling)
+    }                                                     # after this 5 request per day we get "429 error" (Too Many Request)
+}                                                          
 ```
 ##### b. Throttling per view class
 ```py
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
-class BookList(generics.ListAPIView):     # class base view
+
+# 1. CBV
+class BookList(generics.ListAPIView):     
     queryset = Book.objects.all()
     serializer_class = BookSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     throttle_classes = [UserRateThrottle, AnonRateThrottle]
 
+# 2. FBV
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticatedOrReadOnly])
 @throttle_classes([AnonRateThrottle])
@@ -562,75 +1168,201 @@ def BookList(request):         # function base view
     return Response("res")
 ```
 
-##### c. Throttling custom
+##### custom: 1. UserRateThrottle
+
++  addition to user + anon we want to create a new scope
+
 |api\
 |---throttling.py
-```py
-class ReviewCreateThrottle(UserRateThrottle):      # custom throttle class
-    scope = 'review-create'    # addition to user + anon we want to create a new scope
 
-'DEFAULT_THROTTLE_RATES': {   # inside settings.py 
-    'review-create': '5/day'    # introduce your custome scope
+```py
+# 1. settings.py
+'DEFAULT_THROTTLE_RATES': {                 # inside settings.py 
+    'book-list': '5/day'                # introduce your custome scope
 }
+
+# 2. throttling.py
+class BookListThrottle(UserRateThrottle):      # custom throttle class
+    scope = 'book-list'                        # use your new scope 
+
+# 3. view
+class BookList(generics.ListAPIView):                # class base view
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    throttle_classes = [BookListThrottle]       # name of your custome throttle
 ```
 
-##### d. ScopedRateThrottle
+##### custome: 2. ScopedRateThrottle
+
++ with scopedRate we can directly import witout creating any custome throttling class
+
 ```py
+# 1. settings.py
+'DEFAULT_THROTTLE_RATES': {                 # inside settings.py 
+    'book-list': '5/day'                # introduce your custome scope
+}
+
+# 2. view
 from rest_framework.throttling import ScopedRateThrottle      # another kind of custome throttling
-class BookList(generics.ListAPIView):     # class base view
-    queryset = Book.objects.all()          # with scopedRate we can directly import witout creating any custome throttling class
-    serializer_class = BookSerializer       # just intoduce book-list in settings.py
+class BookList(generics.ListAPIView):                        # class base view
+    queryset = Book.objects.all()          
+    serializer_class = BookSerializer                        # just intoduce book-list in settings.py
     throttle_classes = [ScopedRateThrottle]      
-    throttle_scope = 'book-list'         # in settings.py
+    throttle_scope = 'book-list'                             # 'book-list' comes from settings.py
 ```
-### Filtering
-Like `where` condition in sql
-We have 3 ways for filtering: 
-1. filtering agiainst current user ---> `self.current.user`
-2. filtering against url         -----> `self.kwargs["username"]`
-3. filtering against query parameters ---> `self.request.query_params["username"]`
+
+
+### Filtering 
+
+###### 1. Filtering (django-core)
+
++ Like `where` condition in sql
++ 
++ We have 3 ways for filtering: 
+    1. filtering agiainst current user ---> `self.current.user`
+    2. filtering against url         -----> `self.kwargs["username"]`
+    3. filtering against query parameters ---> `self.request.query_params["username"]`
 
 ```py
 class BookList(generics.ListAPIView):                 # instead of pk or id we send something else for filtering like a string
     serializer_class = BookSerializer                  # easier way to impleament filtering is to use generics for overrideing get_queryset()
-    # we are overriding get_queryset instead of using "queryset = Book.objects.all()"
-    def get_queryset(self):                            # 1. filtering against the url (directly maping the value)
-        firstname = self.kwargs.get('fullname')           # django url: api/<str:fullname>/
-        return Book.objects.filter(author__fullname='pk')      # __firstname is used for accessing fields of foreign key
-    def get_queryset(self):                           # 2. filtering against query params 
+                                                         # we are overriding get_queryset instead of using "queryset = Book.objects.all()"
+
+    # 1. filtering against the url (directly maping the value)
+    def get_queryset(self):                            
+        firstname = self.kwargs.get('fullname')                  # django url: api/<str:fullname>/
+        return Book.objects.filter(author__fullname='pk')        # __fullname for accessing fields of foreign key
+
+    # 2. filtering against query params 
+    def get_queryset(self):                           
         fullname = self.request.query_params.get('fullname', None)    # browser url: api/books/?firstname=ali [use & for multiple]
-        return Book.objects.filter(author__fullname='pk')      # django url: /api/books/     ---> there is no need for mapping parameters
+        return Book.objects.filter(author__fullname='pk')            # django url: /api/books/     ---> there is no need for mapping parameters
 ```
 
-##### Generic filtering
-we can only use this approach for `generic views`
+##### 2. Django-filter
+
++ Django-filter is a powerful third-party package  used to filter querysets `based on URL parameters`
++ django-filter parses the query parameters and applies them automatically
++ instead of writing custom filter logic in your views you can let users send them via query parameters:
++ instead of `Book.objects.filter(author=author_name, year__gte=2020)` send `api/books/?author=ali&year__gte=2020`
++ `pip install django-filter` --> use this package for generic filtering
++ we can only use this approach for `generic views`
+
 ```py
-INSTALLED_APPS = [              #  `pip install django-filter` --> use this package for generic filtering
+INSTALLED_APPS = [                # settings.py
     'django_filters',           # what ever you install should be in INSTALLED_APPS
     'rest_framework',
 ]
-class BookList(generics.ListAPIView):             # we should send parameters in the url 
-    serializer_class = BookSerializer              # but no need for extracting them in get_queryset()
-    filter_backends = [filters.DjangoFilterBackend]    # use for exact matching of fix values
-    filterset_fields = ['author__fullname', 'title']  # we can send both or one of them inside url parameters
-    filter_backends = [filters.SearchFilter]          # use for including matching of keywords ex: 'man' inside 'superman'
-    search_fields = ['author__fullname', 'title']    # we can use regex pattern for search_fields like: '^title$'
-    filter_backends = [filters.OrderingFilter]        # use for sorting 
-    ordering_fields = ['rating']            # url: /api/?ordering=rating   or =-rating for decending or =rating,age for multiple ordering
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+}
 ```
+
+```py
+from django_filters.rest_framework import DjangoFilterBackend
+
+# example 1                                              
+class BookList(generics.ListAPIView):                   # we should send parameters in the url like /books/?year=2021&title=Python
+    queryset = Book.objects.all()                      # but no need for extracting them in get_queryset()
+    serializer_class = BookSerializer                  
+    filter_backends = [filters.DjangoFilterBackend]    # Enables django-filter integration (exact matching for keywords)
+    filterset_fields = ['year', 'title']                 # we can send both or one of them inside url parameters
+    # /books/?year=2021                                   # All books from 2021  (exact metach of 2021)
+    # /books/?title=Python                               # All books with exact title "Python"
+    # /books/?year=2021&title=Python                    # 2021 books with title "Python"
+
+# example 2  (related fields)
+class BookList(generics.ListAPIView):                                  # /books/?year=2021&author__fullname=ali
+    queryset = Book.objects.all()                                       # /books/?year=2021&author__age=30
+    serializer_class = BookSerializer                                    # /books/?author__age=30
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_fields = ['year', 'author__fullname', 'author__age']      # use __ for related fieldsg
+
+# example 3
+class BookList(generics.ListAPIView):                # /books/?search=war
+    queryset = Book.objects.all()                     # /books/?search=man
+    serializer_class = BookSerializer                 # DjangoFilterBackend is for 'exact matching' and SearchFilter is for 'include matching'
+    filter_backends = [filters.SearchFilter]          # use for 'include matching' of keywords like 'man' inside 'superman'
+    search_fields = ['author__fullname', 'title']    # we can use regex pattern for search_fields like: '^title$'
+    search_fields = ['=author__fullname', '^title']    # = is for exact matching   and ^ means start with
+
+# example 4
+class BookList(generics.ListAPIView):                # /books/?ordering=rating
+    queryset = Book.objects.all()                     # /books/?ordering=-rating
+    serializer_class = BookSerializer                 # /books/?ordering=rating,age
+    filter_backends = [filters.OrderingFilter]        # use for sorting 
+    ordering_fields = ['rating', 'age']               # -rating for decending and =rating,age for multiple ordering
+    ordering_fields = '__all__'                       # allow all model fields to be orderable
+
+# example 5
+class BookList(generics.ListAPIView):                                 # 
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]  # multiple filter
+    search_fields = ['author__fullname', 'title']                     # Enable ?search=...
+    ordering_fields = ['rating']                                      # Enable ?ordering=rating or ?ordering=-rating
+```
+
+##### 2. Django-filter (custome FilterSet)
+
++ in custome FilterSet we can use lookups
++ lookup expersions like: 'exact', 'iexact', 'contains', 'icontains' , 'gt', 'gte', 'in' and so on
+
+```py
+# 1. filters.py
+class BookFilter(django_filters.FilterSet):                                         # 
+    min_year = django_filters.NumberFilter(field_name='year', lookup_expr='gte')
+    max_year = django_filters.NumberFilter(field_name='year', lookup_expr='lte')
+    title_contains = django_filters.CharFilter(field_name='title', lookup_expr='icontains')
+
+    class Meta:
+        model = Book
+        fields = ['author', 'min_year', 'max_year', 'title_contains']
+
+# 2. views.py
+class BookList(generics.ListAPIView):                      # /books/?author=3
+    queryset = Book.objects.all()                          # /books/?min_year=2020
+    serializer_class = BookSerializer                      # /books/?max_year=2021
+    filter_backends = [filters.DjangoFilterBackend]        # /books/?min_year=2000&max_year=2010
+    filterset_class = BookFilter                           # class name
+```
+
 ### pagination
+
++ we can set pagination globally or per view
++ we have 3 types of pagination:
+    1. page number
+    2. limit offset
+    3. cursor
+
++ in DRF pagination works with url params
++ each req gives us a json like: {count:57, next: url/api/?limit=10&offset=20, resutls=[data] }
 
 ##### 1. global pagination
 ```py
-REST_FRAMEWORK ={   # you should change your views if using function base views or class APIView, but no for other views
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',   # first page is our regular api but next page wil be diff
-    'PAGE_SIZE': 10   # each req gives us a json like: {count:57, next: url/api/?limit=10&offset=20,resutls=[data]}
-}    # user can change page_size with url
+REST_FRAMEWORK ={   # in globall pagination you should change your views if using FBV or class APIView, but no for other views
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',   
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
+    'DEFAULT_PAGINATION_CLASS': 'apps.core.pagination.CustomPagination'         # custome
+    'PAGE_SIZE': 10             # user can change page_size with url manually despite this number
+}    
 ```
 
-#### 2. pagination in function base views
+##### 2. per view pagination
+
 ```py
-from rest_framework.pagination import PageNumberPagination           # or LimitOffsetPagination()
+from rest_framework.pagination import PageNumberPagination
+
+class BookViewSet(viewsets.ModelViewSet):
+    pagination_class = PageNumberPagination
+    page_size = 10                                 # Overrides global PAGE_SIZE
+```
+
+
+#### 2. per view pagination (FBV)
+```py
+from rest_framework.pagination import PageNumberPagination           
 
 @api_view(['GET'])                          # in function base view we need paginator
 def book_list(request):                      # we call two function from paginator: 1.paginate_queryset 2.get_paginated_response
@@ -644,17 +1376,24 @@ def book_list(request):                      # we call two function from paginat
     return paginator.get_paginated_response(serializer.data)           # instead of returning serializer.data return paginator
 ```
 
-#### 3. pagination in APIView
+#### Custom Pagination
+
+|api
+|---pagination.py
+
+
 ```py
+# 1. custom pagination
 class CustomPagination(PageNumberPagination):       # create a custome pagination class in pagination.py
-    page_size = 5           # we can also set as default in setting.py : 'apps.core.pagination.CustomPagination'
+    page_size = 5           
     page_size_query_param = 'page_size'         # define outside the class for inheritance
     max_page_size = 100
 
+# 2. views
 class BookListView(APIView):
     pagination_class = CustomPagination
     
-    def get(self, request):                     # very similar to function base view
+    def get(self, request):                     # very similar to FBV
         queryset = Book.objects.all()
         paginator = self.pagination_class()     # paginator is a variable
         result_page = paginator.paginate_queryset(queryset, request)
@@ -662,13 +1401,13 @@ class BookListView(APIView):
         return paginator.get_paginated_response(serializer.data)
 ```
 
-#### 4. class pagination
-|api
-|---pagination.py
 
-######  a. PageNumberPagination
+######  a. PageNumberPagination (recommend)
+
++ URL: /books/?page=2        ---->     shows page 2
+
 ```py
-from rest_framework.pagination import PageNumberPagination   # recommend     # pagination works with url params
+from rest_framework.pagination import PageNumberPagination       
 class BookListPagination(PageNumberPagination):
     page_size = 10                # default size     # first page url: /api/   ---> next url: /api/?page=2
     page_query_param = 'p'      # instead of "page" word in url: /api/?p=2
@@ -683,6 +1422,10 @@ class BookList(generics.ListAPIView):
 ```
 
 ##### b. LimitOffsetPagination
+
++ URL: /books/?limit=10&offset=20   ---->  shows elements from 21 to 30 (Skips 20 items, returns 10)
++ useful when you need random access to different parts of a dataset
+
 ```py
 from rest_framework.pagination import LimitOffsetPagination  # limit = page_size    offset= number of skip
 class BookListPagination(LimitOffsetPagination):  # offset=10 means skip 10 elements and load from 11
@@ -690,6 +1433,11 @@ class BookListPagination(LimitOffsetPagination):  # offset=10 means skip 10 elem
     max_limit = 100          # max_page_size
     limit_query_param = 'limit'        # alternative word inside url params
     offset_query_param = 'start'        # limit and offset = start and limit
+
+# /books/                      # Gets first 10 items (default_limit)
+# /books/?limit=5              # Gets first 5 items
+# /books/?offset=10            # Skips first 10 items
+# /books/?limit=5&offset=10    # Gets 5 items starting from 11th
 ```
 
 ##### c. CursorPagination
@@ -697,6 +1445,7 @@ class BookListPagination(LimitOffsetPagination):  # offset=10 means skip 10 elem
 + we do not have `page number` anymore, we just have `next` and `previous`. 
 + user can not jump to specific page number. we force user to click multiple times on `next`.
 + its depond on ordering and timing (`created` filed inside django models). its neccessary.
++ useage: 1. Infinite scroll interfaces 2. large dataset
 
 ```py
 from rest_framework.pagination import CursorPagination      # cursor pagination does not work with 'OrderingFilter'
@@ -787,3 +1536,7 @@ class BookTestCase(APITestCase):
         response = self.client.put(reverse('book-detail',args=[self.book.id]),data={})   # put for update
 
 ```
+
+
+
+
