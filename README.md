@@ -5,7 +5,7 @@
 ## Tools
 
 - Git
-- Github CICD
+- Gitlab CICD
 - Docker
 - Linux
 - Ansible
@@ -18,3 +18,10 @@
 - Django
 - Django Rest Framework
 - Odoo
+
+
+## DB
+
+- Redis
+- Postgresql
+- Sql
