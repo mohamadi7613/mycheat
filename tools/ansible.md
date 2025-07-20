@@ -228,6 +228,8 @@ command: echo "{{ 'c:\windows\myfoleder' | win_basename }}"      # returns "myfo
 
 ### Ansible facts
 
++ Ansible facts are system information gathered by Ansible from remote hosts
+
 ```yaml
 hosts: all
 gather_facts: no                           # By default, Ansible gathers facts at the beginning of a playbook run
@@ -242,8 +244,10 @@ tasks:
 ```
 
 ### Magic variables
++ variables that are automatically available in playbooks
+
 ```yaml
-tasks:                                               # variables that are automatically available in playbooks
+tasks:                                               # 
       name: print magic variables
       shell: echo {{inventory_hostname}}                  # Inventory Variables: inventory_hostname_short
       shell: echo {{playbook_dir}}                   # Playbook Variables: playbook_name
@@ -253,12 +257,14 @@ tasks:                                               # variables that are automa
 ```
 
 ### register
++ by register we can capture the output of a task into a "variable" for later use in your playbook.
+
 ```yaml
 - name: Example of register
   hosts: localhost
   tasks:
     - name: Run a command and register its output
-      command: ls -l /tmp                  # by register we can capture the output of a task into a variable
+      command: ls -l /tmp                  #  result is a variable
       register: result                        # Saves the command output in a variable called result
 
     - name: Show the result
@@ -287,7 +293,7 @@ tasks:
       - ansible_facts['distribution_major_version'] != "6"            # ansible_facts is a dictionary
 ```
 
-##### 3. Operators
+##### 3. Operators (and, or, not, is)
 
 ```bash
 vars:
@@ -305,12 +311,12 @@ tasks:
     when: my_var is defined                   # defined, undefined
 ```
 
-##### 3. Regex_search in condition
+##### 3. Regex_search() in condition
 
 ```yaml
 - name: Check if hostname matches pattern             # fully name: ansible.builtin.regex_search
   debug:
-    msg: "Hostname matches web pattern"
+  msg: "Hostname matches web pattern"
   when: inventory_hostname | regex_search('web.*')
 ```
 

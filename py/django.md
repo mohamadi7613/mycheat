@@ -46,6 +46,14 @@ solutions: 1. add default value: `default="some value"` 2. add `null=True` 3. on
 duration
 
 
+### Multiple apps
+
++ Built-in apps (admin, auth, sessions)
++ Creating multiple apps within a single project promotes modularity, scalability, maintainability and  better Team Collaboration
++ it avoids monolithic code, making debugging and testing easier.
++ Each app handles a `specific functionality` which is reusable and independent (e.g., users, blog, payments).
++ `Reusibility`: A well-designed users app can be reused across multiple projects.
+
 ### User admin page
 1. active: when we add a new user inside admin panel just this field is checked
 2. staff status: you can see admin panel   ===> staff member
@@ -1238,7 +1246,7 @@ class MyLoginView(auth_views.LoginView):
 
 
 + How session works:
-    1. Client Makes First Request:
+    1. Client Makes First Request: (logs in via django.contrib.auth)
         - No session exists yet
         - Django generates a unique session ID
     2. Server Response:
@@ -1460,7 +1468,17 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 ```
 
 
+### Common Response Codes
 
+1. 200 OK - Successful GET/PUT/PATCH
+2. 201 Created - Successful POST
+3. 204 No Content - Successful DELETE
+4. 400 Bad Request - Invalid data
+5. 401 Unauthorized - Authentication failed
+6. 403 Forbidden - No permission
+7. 404 Not Found - Resource doesn't exist
+8. 405 Method Not Allowed - Wrong HTTP method
+9. 429 Too Many Requests - Throttled
 
 
 

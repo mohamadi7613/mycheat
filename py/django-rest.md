@@ -119,7 +119,7 @@ class BookSerializer(serializers.Serializer):          # serializer is a class i
     tags = serializers.ListField(child=CharField())
     # these property names should be same as in model
     # if we dont mention a field of model in serializer, that field wont map and we can not see that in the output
-    my_custome_filed = serializers.CharField(default="me", read_only= True)   # custome field can be not existed in model
+    my_custome_filed = serializers.CharField(default="me", read_only= True)   # to_representation()
 
     #  2. Field Options                                               # serializer level validations
 
@@ -137,14 +137,12 @@ class BookSerializer(serializers.Serializer):          # serializer is a class i
 
     # 3. Common Methods for customizing
 
-    def to_internal_value(self, data):                                # Get the value before validation
-        # Transform data before validation
-        return super().to_internal_value(data)
+    def to_internal_value(self, data):                          # override for write operation
+        return super().to_internal_value(data)                # Get the value before validation and Transform data before validation
 
-    def to_representation(self, instance):                            # Get the value for representation
-        # Transform data before returning response
-        rep = super().to_representation(instance)
-        rep['custom'] = "value"
+    def to_representation(self, instance):                  # override for read operation          
+        rep = super().to_representation(instance)           # Get the value for representation and Transform data before returning response
+        rep['my_custome_filed'] = "value"                              # adding custom filed
         return rep
 
     def create(self, validated_data):                    # create method for 'POST' method in order to deserializing data
@@ -176,13 +174,22 @@ It will automatically generate validators for the serializer, such as unique_tog
 It includes simple default implementations of .create() and .update().
 
 ```py
+# 1. minimal
+class BookSerializer(serializers.ModelSerializer):   
+    class Meta:               # all required fields
+        model = Book
+        fields = '__all__'
+
+
+# 2. with detail
 class BookSerializer(serializers.ModelSerializer):   
 
     # 1. Field Options
 
-    full_name = serializers.SerializerMethodField(read_only=True)    # custom field 
+    custom = serializers.SerializerCharField(read_only=True, default="custom")    # custom field  (static filed)
+    full_name = serializers.SerializerMethodField(read_only=True)    # custom field (dynamic filed)
     first_name = serializers.CharField(mex_length=50)                # override fields in ModelSerializer like regular serializer
-    user_email = serializers.EmailField(source='user.email')          # chane name 
+    user_email = serializers.EmailField(source='user.email')          # change name 
     # if you dont use read_only for custome fields it gets error for post request bcz this field is not in db
     # there is no need to override fields but you can do it
 
@@ -224,6 +231,7 @@ class BookSerializer(serializer.HyperLinkedModelSerializer):   # very similar to
 ### Serializer Validations
 
 + validatros is equal for both ModelSerializer and  regular serializer
++ validation only works for POST and PUT requests
 + we have 3 types of validations: 
     1. Serializer level validations
     2. Filed level validations 
@@ -391,7 +399,7 @@ class BookList(APIView):                                 # class base view inher
     def post(self, request, pk):                        # POST method 
         print(request.data)                             # request.data is a dictionary of sending data 
         print(request.query_params.get('param'))         # accessing query params
-        serilizer = BookSerializer(data=request.data)    # deserialize the data
+        serilizer = BookSerializer(data=request.data)    # deserialize the data   # do not forget to use 'data='
         if serializer.is_valid():                       # if we want to create an object with serializer we should use 'data=' as an argument
             serializer.save()                            # this is a boilerplate syntax for POST, PUT, PATCH, DELETE
             return Response(serilizer.data)            
@@ -474,8 +482,8 @@ class BookList(generics.ListCreateAPIView):    # from rest_framework import gene
 
 # 2. detail
 class BookDetail(generics.RetrieveUpdateDestroyAPIView):  # mixed one  # get(), update(), delete()
-    queryset = Book.objects.all()                        # just send an id in http params
-    serializer_class = BookSerializer
+    queryset = Book.objects.all()                        # just send an id in http params, it will handle it
+    serializer_class = BookSerializer                    # there is no need for .filter() or . get()
 
 # 3. list
 class ActiveBookListView(generics.ListAPIView):
@@ -562,7 +570,7 @@ class BookViewSet(viewsets.ModelViewSet):                # ModelViewSet provides
 
 # 2. read only ModelViewSet
 class BookViewSet(viewsets.ReadOnlyModelViewSet):         # ReadOnlyModelViewSet provides only list() and retrieve()
-    queryset = Book.objects.all()
+    queryset = Book.objects.all()                           # syntax of properties like generics
     serializer_class = BookSerializer
 ```
 
@@ -634,6 +642,7 @@ AUTH_USER_MODEL = 'userapp.CustomUser'  # Point to your custom model
 
 
 # 3. User Model in other Models
+from usersapp.models import CustomUser           # if you customise User Model
 from django.contrib.auth.models import User    # import User Model
 class Review(models.Model):                  # get user from /admin page for using in other models
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')      # we should change serializer too
@@ -658,10 +667,9 @@ class ReviewCreate(generic.CreateAPIView):        # using user model in views
 + `Permissions` determine whether a client should be granted access to a particular endpoint or database object.
 + `Authentication` identifies who is making the request (user) while `Permissions` determine what that user can do (access control)
 
-+ we have 3 levels: 
-    1. setting level (for all links) 
-    2. view level   (for specific views)
-    3. object level  (for specific objects)
++ permissions can apply in 2 level:
+    1. view level (globally to all views or specific view)
+    2. object level  (for specific objects)
 
 
 #### permissions: 0. global level
@@ -673,15 +681,15 @@ class ReviewCreate(generic.CreateAPIView):        # using user model in views
     3. IsAuthenticatedOrReadOnly (only GET request for not login users)  
     4. AllowAny (by default)
 
-
 ```py
 REST_FRAMEWORK = {                                            # setting.py
     'DEFAULT_PERMISSION_CLASSES': [                          # you can set only one permission
         'rest_framework.permissions.AllowAny'                  # No restrictions (default)
         'rest_framework.permissions.IsAuthenticated'          # only accessed by logged in users
-        'rest_framework.permissions.IsAuthenticated'         # Requires login
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly'         # Requires login for POST
         'rest_framework.permissions.IsAdminUser'            # Staff/superusers only
-        'rest_framework.permissions.DjangoModelPermissions'  # Ties to Django auth
+        'rest_framework.permissions.DjangoModelPermissions'  # Ties to Django auth  ???????????????
+        'myapp.permissions.CustomPermission',                  # Custom permission   
     ]
 }
 ```
@@ -727,8 +735,8 @@ class IsOwner(permissions.BasePermission):                        # create a cus
 from rest_framework.permissions import IsAuthenticated
 from permissions import IsOwner
 
-class PostDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = Post.objects.all()
+class PostDetailView(RetrieveUpdateDestroyAPIView):       # this permission not works with ListAPIView or ListCreateAPIView
+    queryset = Post.objects.all()                         # this permission works with RetriveAPIView, UpdateAPIView, DeleteAPIView
     serializer_class = PostSerializer                     # IsAuthenticated is a built-in permission for view-level permission
     permission_classes = [IsAuthenticated, IsOwner]       # check user login AND ownership
 ```
@@ -737,6 +745,8 @@ class PostDetailView(RetrieveUpdateDestroyAPIView):
 
 + to impleant custome permission we can implement two methods: `has_permission` and `has_object_permission`
 + `has_permission` runs before the view is called and checks general permissions and only access to the req and view
++ `has_object_permission` is only called for object-level operations (retrieve, update, delete).
++ For list/create actions (like in ListCreateAPIView), DRF calls `has_permission` instead.
 
 
 ```
@@ -776,9 +786,11 @@ class ReviewUserOrReadOnly(permissions.BasePermission):      # has_object_permis
 ### Temporary login
 
 ```py
-urlpatterns = [   # Authentication 
+urlpatterns = [                                                # Authentication for testing
     path('api-auth/', include('rest_framework.urls'))         # create a temp login for normal users and superusers
-]  # adds /appName/api-auth/login/
+]  
+# http://127.0.0.1/appName/api-auth/login/
+# http://127.0.0.1/appName/api-auth/logout/
 ```
 
 ### Authentication
@@ -813,7 +825,7 @@ REST_FRAMEWORK = {                                              # setting.py    
     ],
     'DEFAULT_PERMISSION_CLASSES': [                             # after authentication class
         'rest_framework.permissions.IsAuthenticated',           # set permission class to IsAuthenticated
-    ],
+    ],                                                            # if you do not set permission you see nothing
 }      
 ```
 
@@ -824,6 +836,7 @@ REST_FRAMEWORK = {                                              # setting.py    
 + Not secure over HTTP, use only for testing
 + inside Headers:---> `Authorization: Basic <base64 encoded username:password>`
 + we can use postman and browser     
++ in browser it opens a popup
 + we get 401 error if we do not send headers
 + globally apply for `permission_classes = [permissions.IsAuthenticated]`
 
@@ -832,11 +845,36 @@ REST_FRAMEWORK = {                                              # setting.py    
 
 + `SessionAuthentication` uses Django’s built-in session framework to identify users
 + This is useful for users who are logged in via the web interface (like Django Admin or a login view)
-+  Browsable API	Works well with DRF’s HTML interface
-+  	Enforces CSRF validation for security
-+   Uses Django’s session & login views
-+    Not for mobile/API clients
++ works with Browsable API
++ Enforces CSRF validation for security
++ Uses Django’s session & login views
++ Not for mobile/API clients
 + Stores login info in session cookies
++ globally apply for `permission_classes = [permissions.IsAuthenticated]`
+
+```py
+from django.contrib.auth import authenticate, login, logout
+
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user:
+            login(request, user)  # Creates a session
+            return Response({"status": "Logged in"})
+        return Response({"error": "Invalid credentials"}, status=400)
+
+class LogoutView(APIView):
+    def post(self, request):
+        logout(request)  # Clears the session
+        return Response({"status": "Logged out"})
+
+class ProfileView(APIView):
+    def get(self, request):
+        user = request.user  # Available via session
+        return Response({"username": user.username})
+```
 
 
 ### 3. Token Authentication

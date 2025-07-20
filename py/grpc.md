@@ -1096,3 +1096,11 @@ browser ---1--> gRPC-Web Proxy ---2--> gRPC server
 ##### Google gRPC-Web client
 + comes with Envoy-based proxy
 + send payload as text and not binary
+
+
+
+
+
+
+
+
