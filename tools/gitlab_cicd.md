@@ -1,6 +1,8 @@
 
 # CICD
 
++ CICD is a tool that automates the process of building, testing, and deploying software
++ enabling teams to release updates faster, more reliably, and with fewer errors
 
 ## CD: Continuous Deployment
 + we dont deploy directly in production env, we deploy in satges: stage 1, stage 2, PROD
@@ -9,6 +11,16 @@
 
 ## CI: Continuous Integration
 + when developer commits the code in git repository, it will trigger CI, now changes should be merged, so developers merge their code back to master branch
+
+
+## type of tests
++ we have: 1. functional testing 2. non-functional testing 3. Specialized Testing
++ Functional Testing:
+    1. `Unit Testing`: Tests individual components (e.g., functions, methods) in isolation.
+    2. `Integration Testing`: Checks interactions between modules/services (e.g., API + database).
+    3. `Regression testing` verifies that new code changes don’t break existing functionality
+    4. `User Acceptance Testing (UAT)`: Final validation by end-users/clients before release
+
 
 
 ## Gitlab architecture
@@ -45,72 +57,170 @@
     + `Specific Runners` are self-hosted CI/CD runners. By default they are loced for one project but we can change it.
 
 
-### common stages
-Unit test ---> SAST test ---> build image ---> push to registry ---> deploy to dev env ---> deploy to staging ---> deploy to prod
+### Basic Concepts
 
-## structure
+1. Pipeline: A set of automated top-level steps (build, test, deploy). [the whole proccess of .gitlab-ci.yml]
+2. Stage: A Group of jobs that run in parallel (e.g., build, test, deploy) [phase of pipeline]
+3. Job: Individual task that runs scripts/commands within stage
+4. Artifact: Built output passed between jobs (e.g., a .jar or .zip).
+5. Runner: Agent that executes jobs
+
+
+
+### common stages
++ Unit test ---> SAST test ---> build image ---> push to registry ---> deploy to dev env ---> deploy to staging ---> deploy to prod
++ `SAST (Static Application Security Testing)` is a white-box security testing method that analyzes source code, bytecode, or binaries without executing the program to identify vulnerabilities
+
+
+## Configuration File (.gitlab-ci.yml)
+
++ If no stages are defined, all jobs default to one stage
+
 ```yaml
-# job: basic building block of pipelines   #  run_tests(job) ---> build_image(job)
-run_tests:        # this block is a job, we can have multiple jobs
+tests_job:                            # this block is a job, we can have multiple jobs
     before_script:
         - echo "running before script"
         - chmod +x test.sh           # make test.sh executable
-        - ./test.sh                 # this file is inside the repo
+        - ./test.sh                  # this file is inside the repo
     script:
         - echo "running tests"
     after_script:
         - echo "running after script"
-build_image:      # this block is another job
+
+build_job:                            # this block is another job
     script:
         - echo "building image"
 ```
 
+
+### simple example
+
+```yml
+stages:
+  - build
+  - test
+  - deploy
+
+build_job:
+  stage: build
+  script:
+    - echo "Building..."
+    - make build
+
+test_job:
+  stage: test
+  script:
+    - echo "Running tests"
+    - pytest
+
+deploy_job:
+  stage: deploy
+  script:
+    - echo "Deploying"
+  only:
+    - main
+```
+
+
+### Common Keywords
+
+| Core Configuration    | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `stage`               | Defines which pipeline stage the job belongs to                             |
+| `script`              | Main shell commands to execute in the job                                   |
+| `before_script`       | Commands executed before the main script                                    |
+| `after_script`        | Commands executed after the main script (runs even if job fails)            |
+
+| Execution Control     | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `only`/`except`       | Basic control when jobs run (branches/tags/etc.)                            |
+| `rules`               | Advanced conditional job execution (replaces only/except)                   |
+| `when`                | When to run job (`always`, `on_success`, `on_failure`, `manual`, `delayed`) |
+| `allow_failure`       | Whether pipeline should continue if job fails                               |
+
+| Data Management       | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `variables`           | Define CI/CD variables                                                      |
+| `artifacts`           | Files to pass between jobs                                                  |
+| `cache`               | Files/directories to cache between pipeline runs                            |
+| `dependencies`        | Specify which artifacts to download from previous jobs                      |
+
+| Docker Configuration  | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `image`               | Primary Docker image to use                                                 |
+| `services`            | Additional Docker images to link to the job                                 |
+| `tags`                | Specify which runners can execute the job                                   |
+
+| Deployment Conf       | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `environment`         | Defines deployment target (name, URL, etc.)                                 |
+| `deployment`          | Advanced deployment configuration                                          |
+| `interruptible`       | Whether job can be canceled when newer pipeline starts                      |
+
+| Advanced Elements     | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `parallel`            | Number of parallel job instances to run                                     |
+| `retry`               | Number of times to retry a failed job                                       |
+| `timeout`             | Job timeout duration                                                        |
+| `trigger`             | Downstream pipeline trigger                                                 |
+| `include`             | Include external YAML files                                                 |
+| `extends`             | Configuration inheritance                                                   |
+
 ## stage
-+ we can group multiple jobs into stages that run in a defined order
 + Stages define the order of execution
++ Typical stages might be 1. build, 2. test 3. deploy
++ we can group multiple jobs into stages that run in a defined order
 + only if all jobs in the stage succeed, the next stage will be execute
 + Multiple jobs in the same stage are executed in parallel
 + Pipelines can be triggered by various events, like commits or merges
 
 ```yaml
+# order of execution:  test_job ---> build_job
 stages:          # define a list of stages
     - test         # order is imp
     - build       # build will run as a second stage
-run_tests:         
+test_job:         
     stage: test             # this job runs in stage "test"
     script: 
         - echo "running tests"
-run_tests2:
-    stage: test           # this job is inside the stage "test"
+build_job:
+    stage: build           # this job is inside the stage "build"
     script: 
-        - echo "running tests 2"
+        - echo "running building"
 ```
 
 ### dependency between jobs
+
 ```yaml
 stages:         
     - test
     - build
-run_tests:         
+test_job:         
     stage: test  
     script: 
         - echo "running tests"
-run_tests2:
-    stage: test 
+build_job:
+    stage: build       # Run job out of order (DAG)
     needs:            # this job depends on another job so do not run this until the other job is done
-        - run_tests   # do not run in parallel
+        - tests        # they do not run in parallel
     script: 
-        - echo "running tests 2"
+        - echo "runs building"
 ```
+
+
+
 ### condition with branches
+
 + Each pipeline runs in a fresh environment
 + by default every time we push in `any branch` it automatically execute all the pipelines
++ `only` and `execpt` are deprecated in favor of `rules` but they are still work.
 
 ```yaml
 build_image:
-    only:           # specify for which branch this job should be execute
-        - main      # list of branches
-    except:         # not for this branches
+    only:           # specify for which branch this job should be execute or not be execute
+        - main      # execute for this list of branches
+        - hotfix    # use one of them (only/except)
+    except:         # not execute for this branches
         - feature-branch     
     stage: build
     script:
@@ -128,15 +238,23 @@ job_name:
         - echo "hello"
 ```
 
-### workflow rules
+### rules
+
++ `rules:` is a way that control when a job should run (like 'only')
++ `when` gives us a fallback controll branch
++ `when` values: 
+    1. on_success (default): Run if previous jobs succeed
+    2. always: Run regardless of success/failure
+    3. never: Don’t run if condition is True
+    4. delayed: Run after delay (needs start_in)
 
 ```yaml
 workflow:      # controls the whole pipeline   # write at the begining
     rules:       # also we can use rules inside jobs
-        - if: branch is not main        # condition
-          when: never         # when branch is not main never execute the whole pipeline
-        - when: always       # else execute it always
-        
+        - if: '$CI_COMMIT_BRANCH == "main"'        # condition with if (like only: - main)
+          when: never                             # never on branch main run the commands
+          start_in: 5 minutes                    # required if you set 'delayed'
+        - if:                                     # we can set multiple conditions
 ```
 
 ### variables
@@ -145,15 +263,79 @@ two types of variables: 1. predefined 2. custome
 #### 1. env variables (predefined variables in gitlab)
 
 ```bash
-branch                          # if branch is not main 
-$CI_COMMIT_BRANCH                # if $CI_COMMIT_BRANCH != "main"      # text value
-$CI_PIPRLINE_SOURCE               # if $CI_PIPRLINE_SOURCE == "merge_request_evnet"     # trigger for merge
+# common conditions
+$CI_COMMIT_BRANCH                                 # branch variable
+$CI_COMMIT_BRANCH == "main"	                      # run only if branch is main
+$CI_PIPELINE_SOURCE == "merge_request_event"     #	run only on merge requests
+$CI_PIPELINE_SOURCE == "schedule"	            # run only on scheduled pipelines
+$CI_COMMIT_TAG	                                 # git tag  # if: '$CI_COMMIT_TAG'   # Run only when a tag is pushed
+$CI_COMMIT_MESSAGE =~ /skip/	               # Commit message contains "skip"
+$CI_COMMIT_REF_NAME =~ /^v\d+/	               # Branch or tag starts with v + digits
+$CI_JOB_STAGE	                                   # Current stage name
+$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"	# MR targeting main branch
+$MY_CUSTOM_VARIABLE == "true"                     # Run job only if a specific variable is set
+
+# 1. Pipeline-Level Variables
+$CI                              # Always set to true in GitLab CI/CD environment  
+$CI_PIPELINE_ID                  # Unique ID of the pipeline  
+$CI_PIPELINE_SOURCE              # Trigger type: push, merge_request_event, schedule, etc.  
+$CI_PIPELINE_IID                 # Internal ID of the pipeline (sequential number)  
+$CI_PIPELINE_URL                 # URL to the pipeline in the GitLab UI  
+
+
+# 2. Job-Level Variables
+$CI_JOB_ID                       # Unique ID of the current job  
+$CI_JOB_NAME                     # Name of the job as defined in .gitlab-ci.yml  
+$CI_JOB_STAGE                    # Stage this job belongs to (e.g., build, test)  
+$CI_JOB_STATUS                   # Status of the job (running, failed, success)  
+$CI_JOB_URL                      # URL to view the job in the GitLab UI  
+$CI_JOB_TOKEN                    # Token used to authenticate with GitLab API  
+
+# Commit / Branch / Tag Variables
+branch                          # 'branch' is a variable with no $
+$CI_COMMIT_SHA                   # Full commit SHA  
+$CI_COMMIT_SHORT_SHA            # Shortened commit SHA (first 8 characters)  
+$CI_COMMIT_REF_NAME             # Name of the branch or tag  
+$CI_COMMIT_BRANCH               # Branch name (empty if triggered by tag)  
+$CI_COMMIT_TAG                  # Tag name (only if pipeline is for a tag)  
+$CI_COMMIT_TITLE                # Title of the commit message  
+$CI_COMMIT_DESCRIPTION          # Description (body) of the commit message  
+
+# Merge Request Variables
+$CI_MERGE_REQUEST_ID            # ID of the merge request  
+$CI_MERGE_REQUEST_IID           # Internal merge request ID (project-wide)  
+$CI_MERGE_REQUEST_TITLE         # Title of the merge request  
+$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME  # Source branch of the MR  
+$CI_MERGE_REQUEST_TARGET_BRANCH_NAME  # Target branch of the MR  
+
+# Project-Level Variables
+$CI_PROJECT_ID                  # Numeric ID of the project  
+$CI_PROJECT_NAME                # Repository name  
+$CI_PROJECT_PATH                # Full path (namespace/project_name)  
+$CI_PROJECT_URL                 # Full URL to the project  
+$CI_PROJECT_DIR                 # Directory where the repo is cloned  
+$CI_DEFAULT_BRANCH              # Default branch (e.g., main or master)  
+
+# Runner-Level Variables
+$CI_RUNNER_ID                   # ID of the GitLab Runner used  
+$CI_RUNNER_DESCRIPTION          # Description of the runner  
+$CI_RUNNER_TAGS                 # Tags assigned to the runner  
+
+# Environment Variables
+$CI_ENVIRONMENT_NAME            # Name of the environment (e.g., production)  
+$CI_ENVIRONMENT_URL             # URL of the environment (if set)  
+$CI_ENVIRONMENT_SLUG             # Slug of the environment  
+
+# Docker & Registry Variables
+$CI_REGISTRY                   # GitLab Container Registry address  
+$CI_REGISTRY_IMAGE             # Registry path for the project image  
+$CI_REGISTRY_USER              # Username to authenticate (usually gitlab-ci-token)  
+$CI_REGISTRY_PASSWORD          # Token used for Docker login  
+$DOCKER_AUTH_CONFIG            # Docker config file (JSON) for authentication  
 ```
 
 #### 2. custome variables
-+ our custome variables should not be write inside `gitlab-ci.yml`, good for tokens and passwords
-+ go to:  settings ---> CI/CD ---> variables
-+ this variables will export in linux bash of runner
++ we can also define in `gitlab-ci.yml`
 
 ```yaml
 variables:                   # global variables 
@@ -166,23 +348,40 @@ job_name:
         - echo "$my_id" , "$my_name"     
 ```
 
+### 3. Protected and Masked Variables
+
++ our important custome variables should not be write inside `gitlab-ci.yml`, good for tokens and passwords
++ `Protected variables` run only on protected branches/tags.
++ `Masked variables` hide their value in job logs (only alphanumeric and underscores allowed).
++ Set in: GitLab UI > Settings > CI/CD > Variables
++ this variables will export in linux bash of runner
+
+```yaml
+job:
+  script:
+    - echo "Deploying to environment: $my_password"
+```
+
+
 #### 3. custome variables (File type)
+
++ we have 2 types of variables in Gitlab UI: 1. default 2. type
++ `variable type`: GitLab creates a temporary file and stores the variable’s value inside that file during the pipeline
++ Ideal for private keys, certificates, config files, etc.
 + go to:  settings ---> CI/CD ---> variables
-+ if we have a variable inside a file we can change the `Type` field
-+ write the name of temp file in `key` filed
++ write the 'name of temp file' in `key` field
 
 ```json
 address: mysite.com         # wrtie this in `Value` section
 env: app.mysite.com          # these values will store in a temp file
 ```
 
-
 ```yaml
 push_image:
     stage: build
     script:
-        - echo "$NAME_OF_TEMP_FILE"         # the value is the path of file
-        - cat $NAME_OF_TEMP_FILE           # print the content
+        - echo "$NAME_OF_TEMP_FILE"         # the value is the path of file when using 'echo'
+        - cat $NAME_OF_TEMP_FILE           # print the content with 'cat'
 ```
 
 
@@ -202,24 +401,41 @@ run_tests:                    # we can use image in general or for specific job
 
 
 ### 1. self-hosted runner
-+ we can have multiple runners exp: in our developer system + a runner in aws account
-+ we can see these two runners inside setting --> CICD --> specific runners
-+ we can use each runner for specific job with `tags`. exp: one for tests and one for build
-
++ A self-hosted runner is your own machine that runs GitLab CI/CD jobs instead of using GitLab's shared runners.
++ Ideal for private projects,
++ usefull when we have diff environments, OS, or tools.
++ Faster and more reliable than shared runners
++ we can have multiple runners for example a runner in our developer system and a runner in aws account
++ we can see list of runners from: Settings > CI/CD > Runners
++ we can use each runner for specific job with `Tags`. for example: one for tests and one for build
++ when you run `sudo gitlab-runner register` it asks you to enter a list of tag names
++ the combination of tags should be unique for each runner
 
 ```bash
-.\gitlab-runner install              # windows
+# windows
+.\gitlab-runner install              
 .\gitlab-runner status        # 
-.\gitlab-runner register      # Token, Tags: go to: settings ---> CICD ---> specific runners and copy the token
+.\gitlab-runner register      # Token, Tags: go to: settings > CICD > runners and copy the token
+# linux
+sudo gitlab-runner register
+sudo gitlab-runner start
+sudo gitlab-runner stop
+sudo gitlab-runner restart
 ```
 
+
+###### Tags
+
++ Tags in GitLab CI/CD link your jobs to specific GitLab Runner
++ Tags come from installing self-hosted runners
+
 ```yml
-run_tests:      # in remote-runner we should specify tags
-    tags:       # these tags means that we want to run this job in a runner that have these tags
-        - aws      # the combination of tags should be unique for each runner
-        - local       # we use tags to select a specific runner from the list of all runners
-run_node:              # for this job we should specify diff unique tags
-    image: node:17-alpine            # if I use a docker as excecutor in aws runenr or local runner, I can specify the image
+run_tests:                      # in remote-runner we should specify tags
+    tags:                      # these tags means that we want to run this job in a runner that have these tags
+        - aws                   # the combination of tags should be unique for each runner
+        - local                 # we use tags to select a specific runner from the list of all runners
+run_node:                        # for this job we should specify diff unique tags
+    image: node:17-alpine       # if I use a docker as excecutor in aws runenr or local runner, I can specify the image
     tags:                      # but if the excecutor is not docker like shell, I can not specify the image 
         - aws
         - docker
@@ -228,8 +444,12 @@ run_node:              # for this job we should specify diff unique tags
 
 
 ### 2. self-hosted server(instance)
+
++ Ideal for companies, private projects, or offline development.
 + gitlab server and gitlab runners are installed on separate servers
 + ensuring compatibility: if they have a diff versions, they will still work together
++ it has lost of steps for installing but just know one of them : `apt install gitlab-ce` 
++ gitlab-ce = giltab community edition
 
 
 
@@ -238,10 +458,11 @@ run_node:              # for this job we should specify diff unique tags
 
 
 ### Artifacts
-+ Artifacts are job outputs. artifacts are files generated by jobs and saved after the job finishes
-+ we can download artifacts from jobs, passing them between jobs
++ Artifacts are job outputs
++ Artifacts are files or directories that are saved after a job and passed to later jobs
++ we can download artifacts from jobs and passing them between jobs
 + by default we can download `job.log` as an artifact
-+ go to: settings ---> CICD ---> artifacts
++ Go to Build > Pipelines 
 
 ```yaml
 job_name:
@@ -251,11 +472,45 @@ job_name:
   artifacts:
     paths:                 # List of files or directories to keep as artifacts.
       - build/output/
-    expire_in: 1 week       # Optional and default is forever
+    exclude: 
+      -  *.log               # Optional   #  Skip log files in artifacts
+    expire_in: 1 week       # Optional and default is forever          #  Common values: 30 min, 1 hour, 1 day, 2 weeks, never
+    when: always            # Optional and default is on_success        # Common values: on_success, always, on_failure even      
+    name: artifact_name     # Optional    # Custom name for the artifact archive
+```
+
+##### Use Artifacts in Later Jobs
+
+```yaml
+build:
+  script:
+    - make build
+  artifacts:
+    paths:
+      - build/
+
+test:
+  dependencies:
+    - build                # Pull artifacts from 'build' job
+  script:                  # If `dependencies` is omitted, artifacts from all previous jobs in the same stage are downloaded
+    - run-tests build/
 ```
 
 ##### Artifacts: reports
-+ GitLab provides a special way to handle report files so they can be viewed directly in the GitLab UI.
+
++ GitLab can process various report types to display results in the UI
++ report types like: 
+    1. junit:               JUnit test results
+    2. cobertura:           Code coverage reports
+    3. codequality:         Code Quality reports
+    4. sast:                Static Application Security Testing reports
+    7. dast:                Dynamic Application Security Testing reports
+    5. dependency_scanning: Dependency scanning reports
+    6. container_scanning:  Container scanning reports
+    8. license_management:  License compliance reports
+    9. performance:         Performance metrics
+    10. metrics:            General metrics
+
 
 ```yaml
 test:
@@ -267,14 +522,61 @@ test:
         - app/test-reports/
     reports:                              # Special section for structured data (like JUnit, coverage)
       junit: junit-report.xml           # my file name
+      cobertura: coverage/cobertura-coverage.xml
     expire_in: 1 week                      
     when: always                          # on_success, always, on_failure even
 ```
 
+### pass a file between jobs
++ when we have a file inside a job(server) we can pass this file to another job(another server)
++ the artifacts are sent to gitlab after finishing the job, and can be downloaded by another job
++ by default all the jobs in later stages automatically download all the artifacts from the previous stages
++ for the jobs in the same stage the artifacts wont be downloaded automatically ---> use `dependencies`
++ `needs` and `dependencies` have same functionallity but they have diff perposes
++ with `needs` artifacts from the job listed will be downloaded automatically by default, and you dont need to use `dependencies` separately
++ to prevent access of a job to artifacts from previous stages use `dependencies: []` or we can name some of them (increase speed)
+
+```yaml
+build_image:                       # both the jobs are in the same stage
+    script:
+        - echo "my version" > version_file.txt 
+    artifacts:
+        paths:
+            - version_file.txt           # this file will be sent to gitlab
+another_job:
+    dependencies:
+        - build_image
+    script:
+        - echo version_file.txt          # we access this file in another job
+```
+
+
+#### pass a variable between jobs: .env format
+```yaml
+build_image:
+    script:
+        - echo "VERSION=$VERSION" > version_file.env            # env file for nodejs
+    artifacts:                                 # gitlab provide dotenv format specificly
+        reports:                               # by reports we dont need to use `paths`
+            dotenv: version_file.env            # by dotenv gitlab automatically export them in linux and we dont need to read them from file
+another_job:
+    dependencies:
+        - build_image
+    script:
+        - echo version_file.env          # we access this file in another job
+        - echo $VERSION                  # .env export attributes in linux
+```
+
+
 ### Packages and registries
-+ 3 types of registries: 1. package registery 2. container registry 3. Infrastructure registry
+
++ `registry.gitlab.com` is GitLab's container registry, secure, private space to store and manage Docker container images for your projects.
++ GitLab lets you store and manage packages, artifacts, and Docker images right inside your GitLab project using:
+    1. Package Registry
+    2. Container Registry
+    3. Infrastructure registry
 + package registries: we can push and pull packages in npm, maven, PyPI, etc.
-+ container registries: we can push and pull docker images ---> for every project we have its own registry
++ container registries: we can push and pull docker images ---> Every project have its own registry space
 + infrastructure registries: terraform
 
 #### 1. package registry
@@ -285,11 +587,18 @@ test:
 + `Root image` is the base image for all unnamed images
 
 ```yaml
-build_image:                                 # CI_REGISTRY = registry.gitlab.com
-    stage: build                      # CI_REGISTRY_PASSWORD = Token for authentication
-    before_script:                    # CI_REGISTRY_USER = Authenticated user
+# predefined Variables:
+# $CI_REGISTRY_USER = Authenticated user
+# $CI_REGISTRY_PASSWORD = Token for authentication
+# $CI_REGISTRY = registry.gitlab.com
+# $CI_REGISTERY_IMAGE = full image name
+# $CI_JOB_TOKEN = used to authenticate
+
+build_image:                                 
+    stage: build                      
+    before_script:                    
         - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD   registry.gitlab.com      # bcz its a private registry we need login
-        - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD   $CI_REGISTRY         # $CI_REGISTERY_IMAGE = full image name
+        - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD   $CI_REGISTRY         
     script:                           # build and push
         - docker build -t myimage .     # --tag = -t     # dot is for location of dockerfile
         - docker push myimage             # we can use another job to push the image
@@ -319,9 +628,16 @@ deploy_to_prod:                            # we want to ssh to the gitlab for ge
 
 ###### gitlab environments
 
++ Environments in GitLab CI/CD represent deployment targets for your application (like staging, production, etc.)
++ it has a url section which makes it a clickable link in GitLab's UI
++ Each environment allows you to:
+    - Track what code is deployed where
+    - Access live environments via GitLab UI
+    - Integrate with Kubernetes, monitoring, and review apps
+
 ```yaml
 deploy_to_staging:                     # in gitlab ui go to operate --> environments
-  stage: deploy                     # by this feature we know which verion depolyed to the environment
+  stage: deploy                     # by this feature we know which verion and which commit depolyed to the environment
   script:
     - npm start
   environment:
@@ -356,68 +672,61 @@ build_image:
 ```
 
 
-### pass a file between jobs
-+ when we have a file inside a job(server) we can pass this file to another job(another server)
-+ the artifacts are sent to gitlab after finishing the job, and can be downloaded by another job
-+ by default all the jobs in later stages automatically download all the artifacts from the previous stages
-+ for the jobs in the same stage the artifacts wont be downloaded automatically ---> use `dependencies`
-+ `needs` and `dependencies` have same functionallity but they have diff perposes
-+ with `needs` artifacts from the job listed will be downloaded automatically by default, and you dont need to use `dependencies` separately
-+ to prevent access of a job to artifacts from previous stages use `dependencies: []` or we can name some of them (increase speed)
-
-```yaml
-build_image:                       # both the jobs are in the same stage
-    script:
-        - echo "my version" > version_file.txt 
-    artifacts:
-        paths:
-            - version_file.txt           # this file will be sent to gitlab
-another_job:
-    dependencies:
-        - build_image
-    script:
-        - echo version_file.txt          # we access this file in another job
-```
-
-
-#### pass a file between jobs: .env format
-```yaml
-build_image:
-    script:
-        - echo "VERSION=$VERSION" > version_file.env            # env file for nodejs
-    artifacts:                                 # gitlab provide dotenv format specificly
-        reports:                               # by reports we dont need to use `paths`
-            dotenv: version_file.env            # by dotenv gitlab automatically export them in linux and we dont need to read them from file
-another_job:
-    dependencies:
-        - build_image
-    script:
-        - echo version_file.env          # we access this file in another job
-        - echo $VERSION                  # .env export attributes in linux
-```
 
 ### Cache
-+ we can use cache to speed up the build
+
++ cache is a mechanism that saves files or directories between pipeline jobs to speed up the pipeline 
++ cache is used to avoiding repetitive work—like reinstalling dependencies.
++ Best for Dependencies (node_modules, gems, pip packages in .venv) and resuing them
 + 1. jobs in second execution will use the cache 
 + 2. if two runners use the same cache, one of them download the cache from first runner
 + `Artifacts` get uploaded to gitlab server but `Cache` is for dependencies like `node modules` and store in `runners` directly.
 + its better to use less runners instead of caching in lots of servers. but if we have lots of runners, its better to use a `central caching server`.
++ 
++ cache policies:
+    + pull: Only restore from cache
+    + push: Only save to cache
+    + pull-push: Default (both restore and save)
+
 + we can create a job only for building and generating the cache with `policy: push` and other jobs should have `policy:pull`
 + caching is an optimisation and there is no garantee that it should always work, so jobs should never depond on a cache.
 + we can check `duration time` in gitlab ui, for example when we run the same job for second time
 + in gitlab ui we can delete caches by clicking `Clear runner cache`, but it physically remain in the runner
 + for clearing completely the cache, we should use docker commands or linux commands.
-
++ `key` is an unique identifier for job which determines whether to reuse an existing cache or create a new one
 
 ```yaml
-job_name:
-    stage: "mystage"                      # both jobs are in the same stage and execute in parallel
-    script:                               # like artifacts we can use cache for each job
-        - npm install                    # like artifacts we should specify a path
-    cache:                               # CI_COMMIT_REF_NAME represents the branch name   
-        key: $CI_COMMIT_REF_NAME                    # give a unique name for each job, if not set the default key is "default"
-        paths:                           # location of the cache. which files should be cache and where you want to save?
-            - ./node_modules             # default policy is pull-push
+#  Common key strategies:
+
+# 1. Branch-based Key (Common)
+key: ${CI_COMMIT_REF_SLUG}  # Creates separate caches per branch (Good when branches have different dependencies)
+key: ${CI_COMMIT_REF_NAME}    # represents the branch name
+# 2. Job-based Key (Common)
+key: ${CI_JOB_NAME}         # Creates separate caches per job (Good when jobs have different dependencies)
+# 3. File-based Key (Recommended for dependencies)
+key:
+  files:
+    - package-lock.json  # Changes to this file invalidate cache
+# 4. Composite Key (Combines multiple variables)
+key: ${CI_COMMIT_REF_SLUG}-${CI_JOB_NAME}
+key: ${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}
+# 5. Static Key
+key: global-cache                    # Single cache shared across all pipelines/jobs (can cause cache collisions)
+# 6. default
+# if not set the default key is "default"
+# This can cause cache collisions between different branches or jobs
+# Without a key, GitLab uses a global cache and all jobs using the default key share the same cache
+```
+
+```yaml
+job_name:                               # both jobs are in the same stage and execute in parallel
+    stage: "mystage"                      # we can use cache field for each job
+    script:                               
+        - npm install                    
+    cache:                               #  key is optioan but powerful  
+        key: $CI_COMMIT_REF_NAME        # key gives a unique name for each job, if not set the default key is "default"
+        paths:                           # path means which files should be cache and where you want to save?
+            - ./node_modules             # like artifacts we should specify a path for location of cache files
         policy: pull-push                 # pull-push means job download the cache from internet and push its changes at the end
 another_job:
     stage: "mystage"                    # this job should be read-only since it is in the same stage and uses the same cache

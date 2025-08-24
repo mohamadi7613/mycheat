@@ -565,6 +565,12 @@ cal -B 1                 # Display the current month and the previous month
 ```
 
 
+### Jq
+
+```bash
+
+```
+
 ### Date and time
 
 ```bash

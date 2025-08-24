@@ -161,6 +161,9 @@ docker exec -it web ping db                                       # ping between
 ### docker volume
 + Volumes separete data from the container, so if a container delete, the data remains.
 + Allows multiple containers to share the same data
++ Docker volumes are stored in a specific directory on the host system
+    - Linux (/var/lib/docker/volumes/)
+    - windows (\\wsl$\docker-desktop-data\data\docker\volumes\)
 
 ```bash
 docker volume ls                       # List all volumes  (there are some volumes created by default)
@@ -339,3 +342,9 @@ gateway: The gateway acts as the router for the Docker network. It directs traff
 ## Troubleshooting
 Networking
 docker run --name netshoot --rm -it nicolaka/netshoot /bin/bash
+
+
+
+
+
+

@@ -2,6 +2,13 @@
 
 # Django Rest Framework
 
+## MVT or MVC ?
+
++ DRF is neither a strict MVT nor MVC framework, but it's built on top of Django, which follows the MVT architecture.
++ DRF extends Django's MVT pattern for building APIs
++ In traditional MVC frameworks (like Ruby on Rails or Django's underlying architecture), the View and Controller are often tightly coupled within the same server-side framework, rendering HTML directly on the server.
+
+
 ## Django-core vs DRF
 
 
@@ -85,6 +92,26 @@ class BookSerializer(serializers.ModelSerializer):
 class BookList(generics.ListCreateAPIView):    
     queryset = Book.objects.all()               
     serializer_class = BookSerializer           
+```
+
+### Flow of DRF
+
+```
+Client (e.g., React/Android/HTTPie)
+    ↓
+URLConf / Router
+    ↓
+ViewSet / APIView (Authentication → Permissions → Throttling)
+    ↓
+Serializer (Validation + Conversion)
+    ↓
+Model (Query / Save / Update / Delete)
+    ↓
+Serializer (Data → JSON)
+    ↓
+Renderer (JSON)
+    ↓
+HTTP Response
 ```
 
 ## Serialization
@@ -377,6 +404,24 @@ def book_list(request,pk):                                  # FBV without decora
         book = Book.objects.get(pk=pk)                                # Get the book for deleting
         book.delete()                                                 # call delete from model
         return Response(status=status.HTTP_204_NO_CONTENT)            # 204 is for succuesfully no content
+```
+
+###### request object
+
+```py
+@api_view(['GET','PUT'])                           
+def book_list(request,pk):
+    print(request)                        # <rest_framework.request.Request: GET '/lib/books/?age=45'>
+    print(dir(request))                   # all properties inside request
+    print(request.method)                 # "GET", "POST"
+    print(request.GET)                    # GET query parameters (like ?key=value)
+    print(request.POST)                   # POST form-data (if method="POST")
+    print(request.headers)                 # HTTP headers
+    print(request.META)                   # 	Full metadata (IP, cookies, etc.)
+    print(request.user)                   # 	Current logged-in user (or AnonymousUser)
+    print(request.FILES)                  # 	Uploaded files 
+    print(request.body)                  # 	Raw request body (for APIs)
+    print(request.path)                   # Requested URL path (/some/path/)
 ```
 
 
@@ -838,24 +883,29 @@ REST_FRAMEWORK = {                                              # setting.py    
 + we can use postman and browser     
 + in browser it opens a popup
 + we get 401 error if we do not send headers
-+ globally apply for `permission_classes = [permissions.IsAuthenticated]`
++ we should set a permissions_class per view or set a permission globally in settings.py
++ apply to all views with `permission_classes = [permissions.IsAuthenticated]`
 
 
 #### 2. Session Authentication
 
 + `SessionAuthentication` uses Django’s built-in session framework to identify users
-+ This is useful for users who are logged in via the web interface (like Django Admin or a login view)
++ This is useful for users who are logged in via the web interface (like Django Admin [/admin] or a login view)
 + works with Browsable API
 + Enforces CSRF validation for security
 + Uses Django’s session & login views
 + Not for mobile/API clients
 + Stores login info in session cookies
-+ globally apply for `permission_classes = [permissions.IsAuthenticated]`
++ + we should set a permissions_class per view or set a permission globally in settings.py
++ apply to all views with `permission_classes = [permissions.IsAuthenticated]`
 
 ```py
 from django.contrib.auth import authenticate, login, logout
 
 class LoginView(APIView):
+
+    permission_classes = [permissions.AllowAny]             # Allow unrestricted access
+
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -882,20 +932,24 @@ class ProfileView(APIView):
 + stateless authentication which No sessions or cookies needed
 + each user is assigned a unique token.
 + This token must be sent with every request ( in Authorization header)
-+ Mobile & API clients	Works great for non-browser clients
++ Works great for non-browser clients like Mobile & API clients
++ unlike sessions, a table will create in admin panel for Tokens
 + globally apply for `permission_classes = [permissions.IsAuthenticated]`
-+ after adding to INSTALLED_APPS: `python manage.py migrate`
++ after adding to INSTALLED_APPS run: `python manage.py migrate`
 
 ```py
+# 1. set authentication
 REST_FRAMEWORK = {                                             # setting.py   
     'DEFAULT_AUTHENTICATION_CLASSES': [                        # apply to all view classes
         'rest_framework.authentication.TokenAuthentication'    # globally apply for permission_classes = [permissions.IsAuthenticated]
     ]                                                          # Token Authentication uses token db system
 }  
+# 2. installed apps
 INSTALLED_APPS = [                                             # base requirement for django rest
     'rest_framework',                                          # no need for userapp, just authtoken
     'rest_framework.authtoken',                                # token based authentication      
-]                                                              # manage.py migrate  ---> bcz it creates a new table that is going to store tokens
+]                                                              
+# 3. manage.py migrate                                          # bcz it creates a new table that is going to store tokens
 ```
 
 + there is 2 option for creating tokens:
@@ -913,7 +967,7 @@ print(token.key)
 
 # 2. login view
 urlpatterns = [
-    path('login/', obtain_auth_token),   
+    path('login/', obtain_auth_token),              # send a post method
 ]
 ```
 
@@ -931,18 +985,16 @@ userapp\
 ```
 
 + `obtain_auth_token` is not a browsable page like a login page 
-+ unlike obtain_auth_token, `temporary login` (api-auth/) creates a login page
 + `obtain_auth_token` creates a link for sending form-data
-+ inside Headers:---> `Authorization: Token <token>`
-+ with POST method it accepts in the body a pair of (username + password) and in response gives us a token
-+ we use this token for our requests
++ with POST method in the body send a form-data with (username + password) and in response it gives us a token
++ for every request we use this token inside Headers:---> `Authorization: Token <token>`
 
 ```py
 from rest_framework.authtoken.views import obtain_auth_token   
 urlpatterns = [                                                
     path('account/',include('userapp.api.urls')),              # middle url
     path('login/',obtain_auth_token, name= 'login'),           # send formdata to this url [username,password] and gives us token as response
-    path('register/', RegisterView.as_view()),
+    path('register/', RegisterView.as_view()),                 # custome registerView
     path('logout/', logout_view),
 ]
 ```
@@ -1023,13 +1075,14 @@ class RegistrationSerializer(serializers.ModelSerializer):        # goal: creati
 from rest_framework.authtoken.models import Token         # first create a token model in db by "python manage.py migrate"
 from user_app import models                               # import Token  for 'create_auth_token' 
 
+@permission_classes([permissions.AllowAny])
 @api_view(['POST'])
 def register_view(request):                                           # usual view
     if request.method == 'POST':
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
             account= serializer.save()                              # returns from serializer save() method
-            token, created = Token.objects.get_or_create(user=user)  # ????
+            token, created = Token.objects.get_or_create(user=account)  
             data = {                                                # customise the response and send token after registration
                 'username': account.username,
                 'email': account.email,

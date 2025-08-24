@@ -727,9 +727,22 @@ fully center icon ===> base
 4. Always rebase on the origin master brnach before creating a pull request.
 
 
+## git sub-tree
+## git sub-module
 
 
+## Merge 2 repositories
 
+
+## Global gitignore
+
+## Create blank branch
+
+## git update-index
+
+## Show ignored files
+
+## git lfs
 
 
 

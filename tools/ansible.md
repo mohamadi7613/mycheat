@@ -449,15 +449,19 @@ tasks:
 + Handlers are queued during task execution. Executed at the end of the play if notified by one or more tasks.
 
 ### strategy
-1. `strategy` defines `execution flow control` and how tasks are executed across hosts during a play.
-2. `linear` (default): Runs each task on all hosts (controlled by `forks`) before moving to the next task.
-3. `free`: Each host runs independently; does not wait for others
-4. `host pinned` or `serial`: Similar to free, but forces Ansible to complete a task on serial hosts before moving on to the next
-5. `serial: 1` means wait to finish all tasks for every sinle host and then go for next one.
-6. `debug`: Interactive debugging (asks for user input on failures).
-7. `ansible forks`: a number in `ansible.cfg` file which defines the maximum parallel host connections (default is 5)
-8. If you have 10 forks and 20 hosts, Ansible will execute tasks on 10 hosts at a time until all hosts have been processed.
-9. forks is about parallelism, while host_pinned is about prioritizing completion on individual hosts.
+
++  `strategy` defines `execution flow control` and how tasks are executed across hosts during a play.
++  
++  we have 4 types of strategies: 1. linear 2. free 3. host_pinned 4. debug 
+    1. `linear` (default): Runs each task on all hosts (controlled by `forks`) before moving to the next task.
+    2. `free`: Each host runs independently; does not wait for others
+    3. `host pinned` or `serial`: Similar to free, but forces Ansible to complete a task on serial hosts before moving on to the next
+    4. `serial: 1` means wait to finish all tasks for every sinle host and then go for next one.
+    5. `debug`: Interactive debugging (asks for user input on failures).
+
++ `ansible forks`: a number in `ansible.cfg` file which defines the maximum parallel host connections (default is 5)
++ If you have 10 forks and 20 hosts, Ansible will execute tasks on 10 hosts at a time until all hosts have been processed.
++ forks is about parallelism, while host_pinned is about prioritizing completion on individual hosts.
 
 
 ```yaml
@@ -535,23 +539,24 @@ tasks:
 ### Try-catch
 
 ```yaml
-hosts: all
+hosts: all                                                     # block + rescue + always
 tasks:
     - name: Example of block, rescue, always
-      block:                                  
+      block:                                                        # 1. block (try)
           name: Attempt risky task
           command: /bin/false
 
-      rescue:
-        - name: Handle failure
-          debug:
+      rescue:                                                      # 2. rescue (catch)
+        - name: Handle failure                                     # for exmaple if we get error for installinf from internet
+          debug:                                                   # we can install it locally 
             msg: "The task failed, running rescue actions"
 
-      always:
+      always:                                                      # 3. always (fincally)
         - name: Always do this
           debug:
             msg: "This will always run, regardless of success or failure"
 ```
+
 
 ### Block
 ```yaml
@@ -566,6 +571,16 @@ tasks:
           shell: echo 2
       when: ansible_os_family == "Debian"         # this condition apply to block level
 ```
+
+### Fail intentionally
+
+```yaml
+- name: Fail on purpose
+  fail:
+    msg: "This is an intentional failure"
+```
+
+
 
 ### Handler
 + a `handler` is a special type of task that is triggered by other tasks when a change occurs
@@ -916,14 +931,16 @@ ansible-playbook playbook.yml -i inventory.txt --vault-password-file ~/.vault_pa
 ansible-playbook playbook.yml -i inventory.txt --vault-password-file ~/.vault_pass.py      # use python for getting password from secure location
 vault_password_file = ~/.vault_pass.txt               # Auto-Loading Vault Passwords in ansible.cfg
 ```
+
+
 ### dynamic inventory
+
++ get a json for all hosts using python
 
 ```bash
 ansible-playbook playbook.yml -i inventory.txt                    # static inventory
 ansible-playbook playbook.yml -i inventory.py                    # 
 ```
-
-
 ```py
 # !/usr/bin/env python3               # imp
 import json

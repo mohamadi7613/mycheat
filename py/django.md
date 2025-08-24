@@ -1,6 +1,14 @@
 # Django
 
 
+## MVT (Model-View-Template)
+
+1. Models:    - Represent the data structure (database tables)
+2. Views:     - Handle HTTP requests and return responses and how to interact with the db through ORM  [acts like controller in MVC]
+3. Template:  - Use Django Template Language (DTL) 
+
+
+
 ## Install django
 
 ```bash
@@ -60,7 +68,7 @@ duration
 3. superuser status: you can edit the admin panel
 
 
-## Django Raodmap
+## Flow of Djnago
 
 1. Setup Project
     `python -m venv venv` → Activate → `pip install django` → `django-admin startproject projectname` → `cd projectname`
@@ -1257,6 +1265,7 @@ class MyLoginView(auth_views.LoginView):
         - Django retrieves the corresponding session data
 
 + `session` is server-side but `cookie` is client-side
++ there is no table in admin panel for sessions unlike tokens in DRF
 
 ###### 1. Session: settings.py
 
@@ -1294,12 +1303,13 @@ SESSION_FILE_PATH = '/tmp/django_sessions/'   # For file-based session
 ###### 2. usage
 
 ```py
+request.session.session_key                           # get session key
+session_data = request.session.items()               # Get all session data from complex data
 request.session['username'] = 'mohammad'              # Set a session variable   (store data in session)
 username = request.session.get('username')            # returns None if not set  (get data from session)
 username = request.session.get('username', 'guest')   # with default
 request.session.set_expiry(3600)                      # set expiration time  # in minutes
 request.session.get_expiry_age()                      # get expiration time
-request.session.session_key                           # get session key
 request.session.cycle_key()                           # get new session key
 del request.session['username']                        # delete specific session variable
 request.session.delete("key")                          # delete data from session
@@ -1311,7 +1321,6 @@ request.session['user_prefs'] = {                     # Complex data (automatica
     'language': 'en',
     'notifications': True
 }
-session_data = request.session.items()               # Get all session data from complex data
 ```
 
 ###### 2. Session: views
