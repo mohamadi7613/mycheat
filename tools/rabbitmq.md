@@ -4,9 +4,12 @@
 
 ### why we need broker?
 
-+ decouple and scale our application in a distribute system
++ decouple and scale our application in a distributed system
++ integrate systems written in diff languages
 + aggregate info -> format info -> queue info for using later -> transform info
 + use `dump broker`: it means "No Logic Inside, Only Routing"  -> docouple info
++ increase fault tolerance level
++ high scalability
 
 
 #### Why RabbitMQ?
@@ -17,7 +20,7 @@
 2. multiple auth schema
 3. load balancing in a good way  (you can add more consumers to a single queue without scaling anything else)
 4. built-in clustring
-5. extenedable
+5. extenedable + configurable + supports plugins
 6. written in Erlang
     + programing language for OTP (Open Telecom Platform)
     + focus on network and failure tolerance
@@ -28,6 +31,28 @@
 1. lots of configuration
 2. Queues have lots of properties
 3. Tendncy for application might hide problems
+
+
+### Erlang
+
++ process in Erlang: a lightweight concurrent unit of execution managed by the BEAM VM (Erlang’s virtual machine). 
++ processes are not OS processes or even OS threads — they’re much lighter and optimized for massive concurrency.
++ The maximum number of simultaneously alive Erlang processes is by default 1,048,576. (+1M)
+
+
+### Kafka vs Rabbitmq
+
++ Type:
+    + kafka is a 'message bus' which means it should store messages for some time (kafka need more storage)
+    + rabbitmq is a 'message broker' which means it does not need to store messages
++ Artitecture:
+    + kafka is log-based:           events written to immutable partitions, consumers read sequentially
+    + rabbitmq is message-based:    messages pushed into queues, consumers pull from queues
++ Throughput:
+    + kafka has higher throughput
++ Use case:
+    + kafka: 1. Streaming pipelines 2. real-time analytics 3. event-driven architectures with high throughput
+    + rabbitmq: 1. job distribution 2. async communication 3. microservices
 
 
 ### Install
@@ -41,11 +66,17 @@ docker pull rabbitmq
 # linux
 ```
 
-###  AMQP = Advanced Message Queuing Protocol
+###  AMQP 
 
-+ an open standard application layer protocol for message-oriented middleware
++ AMQP = Advanced Message Queuing Protocol
++ an application layer protocol for message-oriented middleware
++ it defines its own architecture, but in simple terms it has direct contact with various applications
++ it desined for async communication
 + RabbitMQ implements AMQP
-
++ AMQP message has 3 parts:
+    1. Header           metadata key-value pairs about AMQP specification
+    2. Properties       metadata key-value pairs about application
+    3. Body             payload
 
 #### Core components in AMQP
 
@@ -70,12 +101,14 @@ AMPQ:
     Producer → sends messages
     Exchange → routes messages
     Queue → stores messages
-    Consumer → receives messages
+    Consumer → receives messages      [whenever message consumed, it will be deleted from queue]
     Binding → which queue the messages should be routed to
 
+                    -------------------------------------
 ┌─────────┐       ┌──────────┐    Binding       ┌─────────┐       ┌──────────┐
 │ Producer│ ───▶  │ Exchange │  ────────────▶   │  Queue  │ ───▶  │ Consumer │
 └─────────┘       └──────────┘                  └─────────┘       └──────────┘
+                    -------------------------------------
 ```
 
 + we can hev multiple queues in one exchange
@@ -86,7 +119,7 @@ AMPQ:
 │ Producer│ ───▶  │ Exchange │ 
 └─────────┘       └────┬─────┘
                        │
-         ┌─────────────┼─────────────┐
+         ┌─────────────┼─────────────┐    Binding
          ▼             ▼             ▼
      ┌─────────┐   ┌─────────┐   ┌─────────┐
      │  Queue  │   │  Queue  │   │  Queue  │
@@ -103,6 +136,7 @@ AMPQ:
 + Exchange is like a post office inside RabbitMQ
 + Its job is to receive messages from producers and decide where to route them
 + Producers never send messages directly to a queue. They always send them to an exchange
++ Round-robin dispatching (sends each message to the next consumer in sequence)
 
 
 ### Common Exchange Types
@@ -111,6 +145,7 @@ AMPQ:
 2. Fanout:  Broadcasts to all bound queues
 3. Topic:   Routes based on pattern matching (flexible)
 4. Headers: Routes based on message headers (slow)
+5. custome exchange: consistent-hash-plugin
 
 
 ##### 1. Direct type
@@ -182,12 +217,14 @@ AMPQ:
 
 ##### 3. Topic type
 
++ when we have a few topics we can use 'direct exchange', but when we have lots of diff topics we use 'Tpoic exchange'
++ for handeling topic exchange we use 'Regex-like' pattern
 1. Producer publishes a message with routing_key = "user.signup".
-2. Topic Exchange matches keys against binding patterns:
-    a. user.* → matches one word after user. (so it gets the message).
-    b. user.# → matches one or more words after user. (so it gets the message).
+3. Topic Exchange matches keys against binding patterns (regex):
+    a. user.* → matches exactly one word after user. ( user.* gets messages like: user.log, user.err and not accept user.sport.log, user.news.log)
+    b. user.# → matches one or more words after user. (user.# accecpts: user.log, user.news.log, user.news.sport.log ,...)
     c. order.* → does not match, so Queue C doesn’t get this one.
-3. Consumers receive messages from their respective queues.
+4. Consumers receive messages from their respective queues.
 
 ```
                      ┌──────────────────┐
@@ -208,6 +245,21 @@ AMPQ:
     │  Consumer A │      │  Consumer B │      │  Consumer C │
     └─────────────┘      └─────────────┘      └─────────────┘
 ```
+
+#### 4. Headers type
+
++ if you can its better to use topic exchange, since headers exchange is slower
++ route messages based on multiple attributes
++ The binding between a queue and a headers exchange requires a special argument called `x-match`:
+    1. x-match = all           
+        a. Logical AND           
+        b. The message must contain all the headers specified in the binding, and their values must match
+    2. x-match = any
+        a. Logical OR
+        b. The message must contain at least one of the headers and their values specified in the binding must match
++ headers exchange ignores routing_key, so leave it empty in code
+
+
 
 ### Pre-Declared Exchanges
 
@@ -298,564 +350,94 @@ AMPQ:
 +-----------------+        +-----------------+          +-----------------+
 ```
 
+### Node
+
++ A node in RabbitMQ refers to a single Erlang runtime instance
++ A node is one running Erlang virtual machine (BEAM) that has the RabbitMQ code loaded into it.
++ 1 RabbitMQ node = 1 Erlang node running RabbitMQ
++ if a node goes down, messaging will stop
++ it is used for clustering
+
 ### Queue
 
 + Queue: A buffer that stores messages until a Consumer retrieves them.
-+ FIFO behavior (first in, first out)  (we can change this behavior, but not recommended)
-+ Bound to Exchanges via bindings (Producers never send directly to a queue → always to an exchange.)
++ queue is ordered collection with FIFO behavior (first in, first out)  (we can change this behavior, but not recommended)
++ queues are FIFO for producers but there is no garantee to behave exactly the same for consumers
++ both producer and consumer can create queue
++ queue is located on single node and refrenced by unique name
++ 1 queue = 1 Erlang process
++ up to 16384 messages can be loaded into RAM from one queue
++ we have perdefined queues which prefixed by "amq." and used for rabbitmq internal purposes
++ queue bound to Exchanges via bindings (Producers never send directly to a queue → always to an exchange.)
     + Default binding: amq.default
     + the default exchange bind to every queue
-+ Can be :
++ queues can have many properties :
     a. durable (survives broker restart)
     b. exclusive (for one connection only)
     c. auto-delete (deleted when no longer in use)
-
-
-
-### commands
-
-```bash
-# Start/stop server
-docker run -d -p 15672:15672 -p 5672:5672 --name rabbitmq_my_name rabbitmq:3
-rabbitmq-server start
-rabbitmqctl stop
-
-
-# Virtual hosts
-rabbitmqctl add_vhost myvhost
-rabbitmqctl list_vhosts
-
-# Permissions
-rabbitmqctl set_permissions -p myvhost myuser ".*" ".*" ".*"
-rabbitmqctl list_permissions -p myvhost
-
-# Queues & Exchanges
-rabbitmqctl list_queues
-rabbitmqctl list_exchanges
-rabbitmqctl list_bindings
-```
-
-### dashboard
-
-
-###### 1. User Permissions
-
-+ User = an account that connects to RabbitMQ
-+ default username and password: "guest"
-+ Permissions are always assigned per vhost.
-+ Each permission is a regex applied to resource names (exchange/queue).
-+ 
-+ Each user has 3 regex-based permissions in a vhost:
-    1. Configure               What resources the user can create/modify (queues, exchanges, bindings).
-    2. Write                   Where the user can publish messages (exchanges).
-    3. Read                    What resources the user can consume from (queues, exchanges). 
-+
-+ Tags:
-    1. administrator → can manage users, policies, vhosts.
-    2. monitoring → can view stats.
-    3. management → can access UI.
-    4. policymaker → can set policies.
-    5. (No tag) → normal user.
-
-```bash
-# User management
-rabbitmqctl add_user myuser mypassword
-rabbitmqctl delete_user myuser
-rabbitmqctl list_users
-rabbitmqctl change_password myuser newpassword
-rabbitmqctl set_user_tags myuser administrator                    # Set User Tags (roles)
-rabbitmqctl set_user_tags monitor monitoring                      # Read-only Monitoring User
-rabbitmqctl set_permissions -p /vhost myuser ".*" ".*" ".*"     # 1. Configure regex 2. Write regex 3. Read regex   # Full Access
-rabbitmqctl set_permissions -p / myproducer "" ".*" ""           # Can publish but not consume.     # "" or "^$" means no permission
-rabbitmqctl set_permissions -p / myconsumer "" "" ".*"          # Can consume but not publish.
-rabbitmqctl set_permissions -p / myconsumer "" "" "^(Q1|Q@)$"          # Consume from Q1 or Q2 and not other queues
-rabbitmqctl list_user_permissions myuser                         # List Permissions of a User
-rabbitmqctl list_permissions -p /vhost                             # List Permissions of a vhost
-rabbitmqctl clear_permissions -p /vhost myuser                     # Clear Permissions of a User
-```
-
-
-
-
-### python
-
-##### 1. connection and channel
-
-```py
-import pika
-
-conn_param = pika.ConnectionParameters('localhost')
-connection = pika.BlockingConnection(conn_param)                  # Connect to RabbitMQ (default localhost:5672, vhost "/")
-channel = connection.channel()                                                # channel has access to all methods of lib
-```
-
-##### 2. connection parameters
-
-```py
-import pika                                                                # its good idea to write a function for connecting
-
-credentials = pika.PlainCredentials("guest", "guest")                           # username and password for localhost
-conn_param = pika.connection.ConnectionParameters(credentials=credentials)          # keyword calling
-conn_param = pika.connection.ConnectionParameters('localhost',5672, / ,credentials)   # positional calling
-connection = pika.BlockingConnection(conn_param)
-```
-
-##### 2. declare queue
-
-+ we can declare queue in dashboard also and just connect to that in code
-+ we have 2 type of argumets
-    1. queue declare arguments:
-        a. queue
-        b. durable
-        c. exclusive
-        d. autoDelete
-        e. passive
-    2. x-arguments:
-        a. x-message-ttl
-        b. x-expires
-        c. x-dead-letter-exchange
-
-+ we can see non-durable queues in dashboard with no data, but we cannot see auto_delete queues after deleting
-
-```py
-channel.queue_declare(queue='task_queue', passive=True)                # does not create a new one and just check if it exists already
-channel.queue_declare(queue='task_queue', durable=True)                # Durable queue (survives broker restart)
-channel.queue_declare(queue='temp', auto_delete=True)               # Auto-delete queue (deleted when last consumer disconnects)
-channel.queue_declare(       # multiple arguments
-    queue='queue_name',      # Queue name (empty for server-generated)
-    durable=False,           # Survive broker restart?
-    exclusive=False,         # Private to this connection?
-    auto_delete=False,       # Delete when no consumers?
-    arguments={}             # Optional advanced x-arguments
-)
-channel.queue_declare(
-    queue='my_important_queue',
-    arguments={                           # times in milliseconds 
-        'x-expires': 1800000,              # queue is deleted after 30 minutes of being unused (Queue expiration)
-        'x-message-ttl': 300000,           # Messages expire after 5 min   (Message expiration)
-
-        #  Dead letter handling
-        'x-dead-letter-exchange': 'my-dlx',   # Send expired/rejected messages to 'my-dlx' (another exchange)
-        'x-dead-letter-routing-key': "error.message",   #  re-routes to a new routing key
-
-        # Length limits
-        'x-max-length': 10000,             # Hold max 10,000 messages in queue (older messages of the queue are nacked or dead-lettered to make room)
-        'x-max-length-bytes': 10485760,          # Max total size (10MB)
-
-        # type and mode
-        'x-queue-mode': 'lazy',             # Be kind to RAM, use disk  # values: 1. default 2. lazy
-        'x-queue-type': 'quorum',           # 	Underlying queue implementation  # values: 1. classic (default) 2. quorum 3. stream
-        'x-single-active-consumer': True,        # Only one consumer at a time        
-    }
-)
-
-result = channel.queue_declare(queue='', exclusive=True)               # Temporary (exclusive, auto-delete) queue
-queue_name = result.method.queue                                # queue = '' means Let server generate a name which is exclusive and unique
-```
-
-
-##### 3. declare exchange
-```py
-channel.exchange_declare(exchange='direct_logs', exchange_type='direct')          # Direct exchange   // 1. direct, 2. fanout, 3. topic 4. headers
-channel.exchange_declare(exchange='logs', exchange_type='fanout')           # Fanout exchange
-```
-
-
-##### 4. Bind Queue to Exchange
-
-+ we can see list of routing_key in dashboard
-+ `rabbitmqctl list_bindings`
-
-```py
-channel.queue_bind(exchange='direct_logs', queue='Q1', routing_key='error')         # 1. Direct
-channel.queue_bind(exchange='logs', queue='Q1')                                      # 2. Fanout (no routing key needed)
-channel.queue_bind(exchange='topic_logs', queue='Q1', routing_key='user.*')                # 3. Topic
-
-# 4. Headers (not recommend)
-args = {"x-match": "all", "format": "json", "type": "report"}
-channel.queue_bind(exchange='headers_logs', queue='Q2', arguments=args)
-```
-
-###### 7. Acknowledgments
-
-+ `acknowledgement` is a signal sent from a consumer back to the RabbitMQ broker to confirm receipt of a message (Guaranteed Delivery)
-+ Acknowledgments tell the broker what to do with a message:
-    a. delete message immediately  `auto_ack = True`  (broker consider messages is sent to the consumer)
-    b. delete message after receiving ack `auto_ack = False` (after setting this, wrtie `basic_ack`)
-
-    + positive acknowledgement:
-        a. basic_ack: delete single message
-    + negative acknowledgement -----> use this in `try-execpt`
-        a. basic_nack: reject one or multiple messages    
-        b. basic_reject: reject one message
-
-
-```py
-def callback(ch, method, properties, body):
-    try:                                                               # delivery_tag is a unique receipt number for a specific message
-        ch.basic_ack(delivery_tag=method.delivery_tag)                    # <- This tells RabbitMQ to delete it (auto_ack=False)
-    except:                                                                              # NEGATIVE ACKNOWLEDGE (NACK)
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)                     # Reject and requeue one msg if failed
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False, multiple=True)     # Reject all msg if failed and not requeue
-        ch.basic_reject(delivery_tag=method.delivery_tag, requeue=True)                 # Reject and requeue one msg if failed  # same
-
-channel.basic_consume(queue='q1', on_message_callback=callback, auto_ack=True)     # UNSAFE: delete message immediately without considering
-channel.basic_consume(queue='q1', on_message_callback=callback, auto_ack=False)    # SAFE: Manual Ack (you control when it's deleted)
-```
-
-##### 8. Qos
-
-+ ack(Acknowledgment) and qos(Quality of Service) are features ensure messages are not lost
-+ `QoS` is a mechanism that allows you to control how many messages can be sent to a consumer before the consumer acknowledges them.
-+ The key setting is `prefetch_count`, which means how many unacknowledged messages a consumer can hold at a time.
-+ If a consumer is slow, it may get overloaded. QoS prevents this by limiting "in-flight" messages.
-
-```py
-# Set QoS *before* starting to consume                 # Most common setting for fair round-robin
-channel.basic_qos(prefetch_count=1)                    # Fair dispatch (don’t send new msg to consumer until it’s done with one)
-
-# Now start consuming                                 # RabbitMQ will send only one unacknowledged message at a time to that consumer
-channel.basic_consume(queue='hello', on_message_callback=callback, auto_ack=False)   
-```
-
-##### 5. Publish Message
-
-+ basic_publish() ----> producer   `basic_publish(exchange, routing_key, body, properties)`
-+ basic_consume() ----> consumer   `basic_consume(queue, on_message_callback, auto_ack)`
-
-```py
-channel.basic_publish(
-    exchange='direct_logs',   # specific exchange
-    exchange='',           # Use default direct exchange
-    routing_key='error',   # routing key for direct/topic  (need if using default exchange and not used for fanout)
-    body='Hello RabbitMQ!',   # data
-    properties=pika.BasicProperties(   # optioal
-        delivery_mode = 2,              # 1=non-persistent, 2=persistent (survives broker restart)
-        delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE,    # same 2  # Make message persistent
-        content_type = 'text/plain',    # e.g., 'application/json'
-        content_encoding = 'utf-8',     # e.g., 'gzip'
-        headers = {'key': 'value'},     # Custom key-value metadata
-        priority = 0,                   # Message priority (0-9)
-        correlation_id = '12345',       # For RPC responses    # correlation_id is the glue that binds a request to its response
-        reply_to = 'reply_queue_name',  # For RPC responses
-        expiration = '60000',           # TTL for message in ms (e.g., '60000' = 1 minute)
-        message_id = 'msg_001',         # Application-specific message ID
-        user_id = 'guest',              # MUST match broker user for validation
-        app_id = 'my_app',              # Application identifier
-        type = 'order.created'          # Application-specific message type
-    )
-)
-```
-
-##### 6. Consume Message
-
-+ start a continuous, asynchronous process where a consumer application receives messages from a queue
-+ callback function will be triggered whenever a message is available
-+ check consume messages in dashboard
-+
-+ callback args:
-    1. channel:            Channel object on which the message was received
-    2. method:             object contains metadata and information about how the message was delivered
-        + method.delivery_tag:   unique identifier for the message
-        + method.routing_key:   routing key for the message
-    3. properties:         object contains headers
-        + properties.content_type:   e.g., 'text/plain'
-        + properties.content_encoding:   e.g., 'utf-8'
-    4. body:               message body
-
-```py
-def callback(ch, method, properties, body):        #  callback function invoked when a message is received
-    print(f" [x] Received {body.decode('utf-8')}")                  # body is the message payload (decode if it is bytes)
-    print(f" [x] Received {body}")                                   # if body is string use it directly
-    ch.basic_ack(delivery_tag=method.delivery_tag)                    # Acknowledge the message manually (auto_ack=False)
-# Start consuming
-consumer_tag = channel.basic_consume(                      # basic_consume(q, callback)
-    queue='task_queue',                   # consume from this queue
-    on_message_callback=callback,          # callback
-    auto_ack=False                        # True = auto-ack, False = manual ack (auto_ack=False recommended for reliability)
-)                                         # auto_ack=True means message will be deleted immediately without checking any condition
-
-print(' [*] Waiting for messages. To exit press CTRL+C')
-channel.start_consuming()
-channel.basic_cancel(consumer_tag)          # cancel consumer # Uses the tag returned by basic_consume
-```
-
-
-
-##### 1. Producer
-
-```py
-import pika
-
-# Connect
-connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-channel = connection.channel()
-
-# Declare queue
-channel.queue_declare(queue='hello')
-
-# Send message
-channel.basic_publish(exchange='', routing_key='hello', body='Hello World!')
-
-print(" [x] Sent 'Hello World!'")
-connection.close()
-```
-
-
-##### 2. Consumer
-
-```py
-import pika
-
-connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-channel = connection.channel()
-
-channel.queue_declare(queue='hello')
-
-def callback(ch, method, properties, body):          # ch for channel
-    print(f" [x] Received {body}")
-    ch.basic_ack(method.delivery_tag)
-
-channel.basic_consume(queue='hello', on_message_callback=callback, auto_ack=True)
-
-print(' [*] Waiting for messages. To exit press CTRL+C')
-channel.start_consuming()
-```
-
-
-##### Publisher Confirms
-
-+ When a message is published rabbitmq sends back an ack/nack to the publisher
-    + Ack scenarios:                           when we get acknowledgement ?
-        a. non routable transient message:     when a message has a key that is not matching to any key-bounding to any queue
-        b. routable transient message:         acknowledged when message is reached the queue
-        c. persistent messages:                acknowledged when the message is written to disk (durable exchange and queue are required)
-    + Nack scenarios:
-        a. Queue has max-length and overflow reject-publish
-        b. Internal problems with Erlang
-
-+ Two Types of Publisher Confirms:
-    1. Synchronous
-        Publisher waits after each publish until RabbitMQ confirms.
-        Simple but slower (low throughput).
-     
-    2. Asynchronous
-        Publisher keeps sending messages and handles confirms later via callback.
-        Much faster (high throughput).
-
-
-```
-Publisher ---> Exchange ---> Queue
-     ^                          |
-     |                          v
-     |<------ ACK / NACK -------+
-```
-
-###### 1. Synchronous confirm
-
-```py
-# The confirm_delivery() makes basic_publish() callable to returns a boolean.
-channel.confirm_delivery()           # Enable publisher confirms on this channel
-try:
-    # basic_publish() will now block until it gets an ack/nack from the broker.
-    # It returns True if confirmed (ack), False if not (nack) from rabbitmq
-    is_confirmed = channel.basic_publish(
-        exchange='some_exchange',
-        routing_key='some.routing.key',
-        body='Hello World!',
++ with `policies` we can change the behavior of quote without recreating it
+
+
+##### Durability vs Persistency
+
+1. Durability:
+    a. Applies to queues (and exchanges)
+    b. A durable queue will survive broker restarts.
+    c. `channel.queue_declare(queue='task_queue', durable=True)`
+    d. ``
+    e. Durability only ensures the queue definition survives, not the messages in it.
+
+1. Persistence:
+    a. Applies to messages
+    b. A persistent message is written to disk instead of RAM
+    c. If the queue is not durable, persistent messages will still be lost on restart
+    d. Persistence only works if the queue and exchange be durable
+    e. set `delivery_mode=2` in message properties
+    ```py
+    channel.basic_publish(
+        exchange='',
+        routing_key='task_queue',
+        body=message,
         properties=pika.BasicProperties(
-            delivery_mode=2,  # make message persistent
-        ),
-        mandatory=True  # Ensure message is routed to a queue
+            delivery_mode=2                 # make message persistent
+        )
     )
-    if is_confirmed:
-        print('Message was confirmed by broker!')
-    else:
-        print('Message was NOT confirmed (nacked)!')
+    ```
 
-except pika.exceptions.UnroutableError:
-    print('Message was returned (unroutable)!')
-except pika.exceptions.NackError:
-    print('Message was nacked!')
-```
-
-###### 2. Asynchronous confirm
-
-```py
-def on_delivery_confirmation(frame):                               # Callback function
-    if frame.method.NAME == 'Basic.Ack':
-        print(f'Message confirmed (delivery_tag: {frame.method.delivery_tag})')
-    elif frame.method.NAME == 'Basic.Nack':
-        print(f'Message NOT confirmed (nacked)! (delivery_tag: {frame.method.delivery_tag})')
-
-channel.confirm_delivery()                                       #  Enable publisher confirms on the channel
-channel.add_on_return_callback(on_delivery_confirmation)          # Add callback to listener
-channel.basic_publish(
-    exchange='',
-    routing_key='async_confirm_test',
-    body=message,
-    properties=properties,
-    mandatory=True   # Ensure message is routed to a queue
-)
-```
-
-
-###### policies ensuering delivery to queue
-
-```py
-# 1. publisher side
-channel.basic_publish(..., mandatory=True)                                         # Return message if unroutable
-channel.basic_publish(properties=pika.BasicProperties(delivery_mode=2))           # Persistent message
-
-# 2. broker side
-channel.queue_declare(queue='my_queue', durable=True)                               # Set queue to durable
-channel.exchange_declare(exchange='my_exchange', durable=True)                     # Set exchange to durable
-
-# 3. consumer side
-channel.basic_consume(queue='my_queue', on_message_callback=callback, auto_ack=False)   # inside the callback use ch.basic_ack()
-```
-
-
-
-
-### Message Patterns
+### rabbitmq patterns
 
 + we need patterns since we have diff use cases
 + for example: sometimes we need "fire and forget" and sometimes "publish/subscribe" 
 +
 + message patterns:
-    1. point-to-point (simple)               1 producer, 1 queue, 1 consumer
-    2. Work Queue / Competing Consumers      Distribute tasks among multiple workers
-    3. Publish/Subscribe                     Broadcast messages to multiple consumers
-    4. Routing (Direct Exchange)             Selective message receiving based on routing key
-    5. Topics                                Pattern-based message routing
-    6. RPC (Request-Reply)                   Remote procedure calls
-    7. Dead Letter Queue (DLQ)               Handle failed or expired messages
-    8. Priority Queue                        Process high-priority messages first
-    9. Sharded Queue                         Distribute load across multiple queues
+    1. point-to-point (simple queue)                    1 producer, 1 queue, 1 consumer
+    1. fire and forget                                  same as point-to-point but set TTL
+    2. Work Queue / Task Queue/ Competing Consumers     Distribute tasks among multiple workers (balancing traffic)
+    3. Publish/Subscribe                                Broadcast messages to multiple consumers (fanot)
+    4. Routing (Direct Exchange)                        Selective message receiving based on routing key
+    5. Topics                                           Pattern-based message routing
+    6. RPC (Request-Reply)                              Remote procedure calls
+    7. Dead Letter Queue (DLQ)                          Handle failed or expired messages
+    8. Priority Queue                                   Process high-priority messages first
+    9. Sharded Queue                                    Distribute load across multiple queues
 
-
-###### 0. Fire and forget
-
-+ just set `TTL` which means if no one consume a msg if will delete
-
-###### 1. Point-to-Point (simple)
-
-+ One producer, one queue, one consumer
-
-```py
-# Producer
-channel.queue_declare(queue='hello')
-channel.basic_publish(
-    exchange='',
-    routing_key='hello',
-    body='Hello World!'
-)
-
-# Consumer
-def callback(ch, method, properties, body):
-    print(f"Received {body}")
-
-channel.queue_declare(queue='hello')
-channel.basic_consume(
-    queue='hello',
-    on_message_callback=callback,
-    auto_ack=True
-)
-channel.start_consuming()
-```
-
-###### 2. Work Queue / Competing Consumers
-
-+ Distribute tasks among multiple workers
-
-```py
-# Producer (round-robin distribution)
-channel.queue_declare(queue='task_queue', durable=True)
-channel.basic_publish(
-    exchange='',
-    routing_key='task_queue',
-    body=message,
-    properties=pika.BasicProperties(
-        delivery_mode=2,  # make message persistent
-    )
-)
-
-# Consumer (fair dispatch)
-channel.queue_declare(queue='task_queue', durable=True)
-channel.basic_qos(prefetch_count=1)  # Fair dispatch
-channel.basic_consume(
-    queue='task_queue',
-    on_message_callback=callback
-)
-```
-
-###### 3. Publish/Subscribe
-+ Broadcast messages to multiple consumers
-
-```py
-# Producer
-channel.exchange_declare(exchange='logs', exchange_type='fanout')
-channel.basic_publish(
-    exchange='logs',
-    routing_key='',  # ignored in fanout
-    body=message
-)
-
-# Consumer (each gets own temporary queue)
-result = channel.queue_declare(queue='', exclusive=True)
-queue_name = result.method.queue
-channel.queue_bind(exchange='logs', queue=queue_name)
-channel.basic_consume(queue=queue_name, on_message_callback=callback)
-```
-
-###### 4. Routing (Direct Exchange)
-+ Selective message receiving based on routing key
-
-```py
-# Producer
-channel.exchange_declare(exchange='direct_logs', exchange_type='direct')
-channel.basic_publish(
-    exchange='direct_logs',
-    routing_key='error',  # or 'warning', 'info'
-    body=message
-)
-
-# Consumer (subscribe to specific severities)
-channel.queue_bind(
-    exchange='direct_logs',
-    queue=queue_name,
-    routing_key='error'  # can bind multiple keys
-)
-```
-
-
-###### 5. Topics
-
-+ Pattern-based message routing
-
-```py
-# Producer
-channel.exchange_declare(exchange='topic_logs', exchange_type='topic')
-routing_key = 'kern.critical'  # e.g., 'app.error', 'db.query.slow'
-channel.basic_publish(
-    exchange='topic_logs',
-    routing_key=routing_key,
-    body=message
-)
-
-# Consumer (pattern matching)
-channel.queue_bind(
-    exchange='topic_logs',
-    queue=queue_name,
-    routing_key='*.critical'  # or 'kern.*', '#.error'
-)
-```
-
-###### 6. RPC (Request-Reply or Request-Response)
+#### 1. RPC
 
 + Remote procedure calls
-+ both client and server act as consumers and producers
++ call a function (service) on another application, as if it were local — but under the hood, it uses message queues.
++ both client and server act as consumers and producers which means send/receive messages.
++ suppose client as producer and server as consumer.
++ in this model we have multiple clients and one server (or more)
++ use case: distribute tasks among multiple workers (servers) and wait for results
++ use case: when we should impleament one time-consuming service for multiple clients (consumers)
++ we have 2 queues in this senario: 1. 'request queue' and 2. 'callback queue'.
+    + every client has its own 'callback queue'
+    + server has 'request queue'
++ when we have multiple clients, clients recieve theier messages by correlation_id
++ How it works:
+    1. Client sends a request message to a 'request queue'.
+    2. Server (worker/consumer) listens on that queue, processes the request, and sends back a response.
+    3. Client waits for the response on a 'callback queue'.
 
 ```
 +------------------+                     +-------------------+
@@ -876,122 +458,604 @@ channel.queue_bind(
          |                                           |
          | Response Message                          |
          +<------------------------------------------+
-           (correlation_id, sent to reply_to queue)
+           (correlation_id, sent to reply_to (callback_queue))
 ```
 
 
-```py
-# Client
-result = channel.queue_declare(queue='', exclusive=True)       # system-generate queue for RPC
-callback_queue = result.method.queue                           # name of generated queue 
+#### 2. DLX (Dead-Letter-EXchange)
 
-correlation_id = str(uuid.uuid4())                            #  generates a random UUID  (Universally Unique Identifier)  (128-bit number)
-channel.basic_publish(
-    exchange='',                                         #  use default exchange
-    routing_key='rpc_queue',                              # same queue in server
-    properties=pika.BasicProperties(                      # correlation_id & reply_to: Essential for implementing the RPC pattern.
-        reply_to=callback_queue,                          # when client recievs the respone from server, it detects that with correlation_id
-        correlation_id=correlation_id,                    # at first client, glues correlation_id to every seding request to server
-    ),                                                    # properties define headers of message, reply_to and correlation_id are headers
-    body='request data'
-)
-
-# Server
-def on_request(ch, method, props, body):
-    response = process_request(body)                      # process_request() is what we do with request
-    ch.basic_publish(                                     # inside consumer callback we send response to client 
-        exchange='',                                       # use default exchange
-        routing_key=props.reply_to,                         # props are same as properties in client
-        properties=pika.BasicProperties(
-            correlation_id=props.correlation_id            # same correlation_id from client
-        ),
-        body=str(response)
-    )
-    ch.basic_ack(delivery_tag=method.delivery_tag)        # in callback we send ack to exchange to delete message as other patterns
-
-channel.queue_declare(queue='rpc_queue')
-channel.basic_consume(queue='rpc_queue', on_message_callback=on_request)     # server is consumer generally
-```
-
-
-###### 7. Dead Letter Queue (DLQ)
-
++ first declare a DLX exchange, It can be of any type: direct, topic, fanout
++ for DLX we should set some properties in main queue
++ DLX is a property for queue
 
 ```py
-# Setup DLX
-channel.exchange_declare(exchange='dlx', exchange_type='direct')
-channel.queue_declare(queue='dead_letters')
-
-# Main queue with DLQ config
 channel.queue_declare(
     queue='main_queue',
     arguments={
-        'x-dead-letter-exchange': 'dlx',
+        'x-dead-letter-exchange': 'exchange.dlx',       # value is name of exchange
         'x-dead-letter-routing-key': 'main_queue_dl',
         'x-message-ttl': 60000  # 1 minute TTL
     }
 )
+```
 
-channel.queue_bind(
-    exchange='dlx',
-    queue='dead_letters',
-    routing_key='main_queue_dl'
-)
+```
++----------------+      +-----------------+      +-----------------------+
+|   Producer     |      |                 |      |                       |
+|                |      |   Main Exchange |      |   Main Queue          |      not recived by consumer
+| (Publishes Msg)|----->|                 |----->| (x-dead-letter-exchange|--------%-------%--------%-----> Consumer
+|                |      | (e.g., 'app.')  |      |    = 'exchange.dlx')  |             redirect to DLX
++----------------+      +-----------------+      |                       |
+                                                 +----------+------------+
+                                                            |
+                                  Conditions:               |
+                                  1. Rejection (requeue=false)
+                                  2. TTL Expired            |
+                                  3. Queue Max Length       | Message
+                                                            | becomes
+                                                            | "dead"
+                                                            v
++----------------+      +-----------------+      +----------+------------+
+|   Administrator|      |                 |      |                       |
+|     or         |      |  Dead Letter    |      |   Dead Letter Exchange  |
+|   Consumer     |<-----|    Queue        |<-----|  name = exchange.dlx  |
+| (Analyses Msg) |      |                 |      |                      |
+|                |      |                 |      |                       |
++----------------+      +-----------------+      +-----------------------+
 ```
 
 
-###### 8. Priority Queue
 
+### python
++ read pika.md in this repo
+
+
+### commands
+
+```bash
+
+# Start/stop server
+docker run -d -p 15672:15672 -p 5672:5672 --name rabbitmq_my_name rabbitmq:3
+rabbitmq-server start
+rabbitmqctl stop
+
+
+# Virtual hosts
+rabbitmqctl add_vhost myvhost
+rabbitmqctl list_vhosts
+
+
+# 1. rabbitmqctl
+rabbitmqctl list_queues
+rabbitmqctl list_exchanges
+rabbitmqctl list_bindings
+
+# 2. rabbitmqadmin
+rabbitmqadmin delete queue name=myqueue                     # Delete a queue
+
+# 3. rabbitmq-plugins
+```
+
+### Windows
+
+```bash
+/rabbitMQServer/sbin/rabbitmq-server.bat             # start server windows      # check in services from task manager 
+type /rabbitMQServer/sbin/rabbitmq.bat             # edit this file and specify the location of config file
+rabbitmq-plugins.bat enable rabbitmq-management
+```
+
+
+
+###### 1. User Permissions
+
++ User = an account that connects to RabbitMQ
++ default username and password: "guest"
++ Permissions are always assigned per vhost.
++ Each permission is a regex applied to resource names (exchange/queue).
++ 
++ Each user has 3 regex-based permissions in a vhost:
+    1. Configure               What resources the user can create/modify (queues, exchanges, bindings).
+    2. Write                   Where the user can publish messages (exchanges).
+    3. Read                    What resources the user can consume from (queues, exchanges). 
++
++ Tags:
+    1. administrator → can manage users, policies, vhosts.
+    2. monitoring → can view stats.
+    3. management → can access UI.
+    4. policymaker → can set policies.
+    5. Impersonator
+    6. (No tag) → normal user.
+
+```bash
+# User management
+rabbitmqctl add_user myuser mypassword
+rabbitmqctl delete_user myuser
+rabbitmqctl list_users
+rabbitmqctl change_password myuser newpassword
+
+rabbitmqctl set_user_tags myuser administrator                    # Set User Tags (roles)
+rabbitmqctl set_user_tags monitor monitoring                      # Read-only Monitoring User
+
+rabbitmqctl set_permissions -p /vhost myuser ".*" ".*" ".*"     # 1. Configure regex 2. Write regex 3. Read regex   # Full Access
+rabbitmqctl set_permissions -p / myproducer "" ".*" ""           # Can publish but not consume.     # "" or "^$" means no permission
+rabbitmqctl set_permissions -p / myconsumer "" "" ".*"          # Can consume but not publish.
+rabbitmqctl set_permissions -p / myconsumer "" "" "^(Q1|Q2)$"          # Consume from Q1 or Q2 and not other queues
+rabbitmqctl list_user_permissions myuser                         # List Permissions of a User
+rabbitmqctl list_permissions -p /vhost                             # List Permissions of a vhost
+rabbitmqctl clear_permissions -p /vhost myuser                     # Clear Permissions of a User
+```
+
+##### 2. Policies
+
++ Policies let you apply configuration rules (key–value pairs) to multiple queues and exchanges automatically.
+
+```bash
+rabbitmqctl list_policies                                           # List Policies
+rabbitmqctl set_policy [-p vhost] name pattern definition [priority]      # Set Policy
+rabbitmqctl clear_policy policy_name
+```
+
+
+###### dashboard (rabbitmq_management)
+
++ we can send message in dashboard in 2 ways: 1. exchange tab 2. queues tab
++ we can create binding in dashboard in 2 ways: 1. exchange tab 2.queues tab
+
+
+###### dashboard API
+
++ we can create our own UI by using REST api providing by rabbitmq_management
++ `localhost:15672/api/nodes`
+
+
+###### rabbitmqadmin
+
++ localhost:15672/api/vhosts
++ localhost:15672/api/overview
+
+```bash
+rabbitmq-plugins enable rabbitmq_management              # Requires the rabbitmq_management plugin to be enabled.
+
+rabbitmqadmin list users
+rabbitmqadmin list vhosts
+rabbitmqadmin list permissions
+
+rabbitmqadmin list queues                                  # List all queues
+rabbitmqadmin declare queue name=myqueue durable=true          # Create a queue
+rabbitmqadmin delete queue name=myqueue                     # Delete a queue
+
+rabbitmqadmin list exchanges                                                    # List exchanges
+rabbitmqadmin declare exchange name=myexchange type=direct durable=true           # Create exchange
+rabbitmqadmin delete exchange name=myexchange                                     # Delete exchange
+rabbitmqadmin list bindings                                                     # List bindings
+
+# Workflow
+rabbitmqadmin declare queue name=task_queue durable=true                         # 1. Create queue
+rabbitmqadmin declare exchange name=logs type=fanout durable=true                   # 2. Create exchange
+rabbitmqadmin declare binding source=logs destination=task_queue                # 3. Bind queue to exchange
+rabbitmqadmin publish exchange=logs payload="Hello RabbitMQ"               # 4. Publish message
+rabbitmqadmin get queue=task_queue requeue=false                           # 5. Read message (consume)
+```
+
+
+
+
+### Config
+
++ we can config rabbitmq with:
+    1. config file
+        a. new in sysctl format           --> good for simple config (human readable)    ---> `rabbitmq.config`
+        b. old in erlang format           --> good for complex config                    ---> `advanced.config`
+        c. both: we can have both formats
+    2. env variables
+
+
+#### 1. rabbitmq.config
+
+```bash
+vim /etc/rabbitmq/rabbitmq.conf               # edit config file
+docker container logs rabbitmq | head -n 20                  # check logs to see the location of config file
+rabbitmqctl reload_config
+
+## ------------------------------
+## Networking
+## ------------------------------
+listeners.tcp.default = 5672          # Default AMQP listener (for producers/consumers)
+management.listener.port = 15672      # RabbitMQ Management UI web port
+management.listener.ip = 0.0.0.0      # Listen on all network interfaces (not just localhost)
+
+## ------------------------------
+## Authentication & Default Users
+## ------------------------------
+loopback_users.guest = false          # Allow 'guest' user to connect remotely (not only localhost)
+default_user = admin                  # Create a default user on startup (username = admin)
+default_pass = secret                 # Default user's password (should change in production!)
+
+## ------------------------------
+## Clustering
+## ------------------------------
+cluster_formation.peer_discovery_backend = rabbit_peer_discovery_classic_config   # Cluster discovery method
+cluster_formation.classic_config.nodes.1 = rabbit@node1   # Node 1 hostname in the cluster
+cluster_formation.classic_config.nodes.2 = rabbit@node2   # Node 2 hostname in the cluster
+
+## ------------------------------
+## Resource Limits
+## ------------------------------
+vm_memory_high_watermark.relative = 0.4   # Max memory usage (40% of system RAM before flow control triggers)
+disk_free_limit.relative = 1.5            # Minimum free disk space = 1.5x system RAM (prevents data loss)
+
+## ------------------------------
+## Logging
+## ------------------------------
+log.console = true             # Enable logging to console (stdout)
+log.console.level = info       # Console log level = info (can be debug, warning, error, etc.)
+log.file.level = warning       # File log level = warning (only warnings and errors go to log files)
+
+## ------------------------------
+## TLS / SSL
+## ------------------------------
+listeners.ssl.default = 5671              # Enable SSL listener on port 5671
+ssl_options.cacertfile = /etc/rabbitmq/certs/ca.pem        # Path to CA certificate
+ssl_options.certfile   = /etc/rabbitmq/certs/server.pem    # Path to server's public certificate
+ssl_options.keyfile    = /etc/rabbitmq/certs/server-key.pem # Path to server's private key
+ssl_options.verify     = verify_peer     # Require clients to present valid certificates
+ssl_options.fail_if_no_peer_cert = true  # Reject clients that do not provide a certificate
+```
+
+#### 2. advanced.config
+
+```bash
+vim /etc/rabbitmq/advanced.config            # edit config file
+
+[
+ {rabbit, [
+   {vm_memory_high_watermark, 0.4},
+   {disk_free_limit, {mem_relative, 1.0}}
+ ]}
+].
+```
+
+#### 3. Environment Variables
+
++ we can also config rabbitmq with environment variables
++ we can also set environment variables using docker
+
+```bash
+vim /etc/rabbitmq/rabbitmq-env.conf
+
+# rabbitmq-env.conf
+NODENAME=rabbit@myhost
+NODE_PORT=5672
+MNESIA_BASE=/var/lib/rabbitmq/mnesia
+CONFIG_FILE=/etc/rabbitmq/rabbitmq
+```
+
+###### Erlang Cookie in RabbitMQ
+
++ Erlang nodes (like RabbitMQ brokers) communicate securely using a shared secret called the Erlang cookie.
++ it is create automatically by RabbitMQ
++ Think of it like a password that all nodes in the cluster must share
++ It’s just a string of characters and must be identical on all nodes in a RabbitMQ cluster
++ The cookie is stored in a hidden file named `.erlang.cookie`
+
+```bash
+cat /var/lib/rabbitmq/.erlang.cookie             # print cookie in terminal
+type %HOMEDRIVE%%HOMEPATH%\.erlang.cookie        # type is equivalent to cat in windows
+```
+
+
+
+
+### RabbitMQ Clustering
+
++ clustering means multiple instance of rabbitmq which seems to be as a single rabbitmq from the outside
++ cluster is a group of RabbitMQ nodes (servers) that share metadata (users, vhosts, queues, exchanges, bindings).
++ Nodes can run on the same machine (for dev) or different machines (prod).
++ Clustering improves availability (fail safe) & scalability (load balancing)
++ we can check clusters in RabbitMQ Management UI, overview tab
++ Types of Data in Cluster:
+    1. metadata
+        - replicated across all nodes
+        - Exchanges, queues (names only), bindings, users, vhosts, permissions, policies
+    2. Queue contents
+        - by default stored on a single node only
+        - by default if a node falls, queue contents are lost. (solution is 'Mirrroed queues')
++ Node Types
+    1. RAM Node → stores cluster state in memory (faster, but state lost if rebooted)
+    2. Disk Node → stores cluster state on disk (at least one per cluster is required)
+
+```bash
+# create a cluster with 3 nodes                            # Copy the same .erlang.cookie file to all nodes (/var/lib/rabbitmq/.erlang.cookie)
+rabbitmq-server -detached -name rabbit@node1               # Start a node with a name
+rabbitmq-server -detached -name rabbit@node2               # set these names for hostname of linux server
+rabbitmq-server -detached -name rabbit@node3
+
+# Join another node to cluster                           # on node2 and node3
+rabbitmqctl stop_app                                     # stop it first
+rabbitmqctl join_cluster rabbit@node1                   # join this node to node1 (cluster)
+rabbitmqctl start_app                                    # after join start it
+rabbitmqctl cluster_status                                 # Check cluster status
+
+rabbitmqctl forget_cluster_node rabbit@node2                  # Force remove a node
+```
+
+
+#### high-availability (HA)
+
++ hitgh-availability means a system stay operational and accessible even if parts of it fail (hardware, software, or network).
++ HA in RabbitMQ:
+    1. Classic Mirrored Queues (old, deprecated)
+    2. Quorum Queues (modern, recommended)
+
+##### 1. Mirrored Queues
+
+1. One node holds the master queue, and others hold mirrors (slaves)
+2. When a client publishes a message → goes to the master queue
+3. The master replicates it to all mirrors
+4. If the master node fails → one mirror is automatically promoted to master.
+5. Deprecated in RabbitMQ 3.8+
+
+##### 2. Quorum Queues
+
++ Quorum Queues (QQ) is based on the Raft consensus algorithm
+1. One node is the leader. Other nodes are followers (replicas).
+2. A message is acknowledged only after a majority of nodes confirm it.
+3. If the leader fails → a follower is promoted automatically.
+4. Deploy at least 3 RabbitMQ nodes (odd number recommended).
+
++ for QQ we should do 3 things:
+    1. Configuration
+    2. Queue Creation (1. Manual Declaration or 2. Via Policy)
+
+####### 1. Configuration
+
+```bash
+cluster_formation.peer_discovery_backend = rabbit_peer_discovery_classic_config
+cluster_formation.classic_config.nodes.1 = rabbit@node1
+cluster_formation.classic_config.nodes.2 = rabbit@node2
+cluster_formation.classic_config.nodes.3 = rabbit@node3
+```
+
+####### 2. Queue Creation: 1. Manual Declaration
+
+```bash
+rabbitmqadmin declare queue name=my_quorum_queue durable=true arguments='{"x-queue-type":"quorum"}'
+```
+
+####### 2. Queue Creation: 2. Via Policy
++ convert many queues at once
+
+```bash
+rabbitmqctl set_policy quorum "^qq\." '{"queue-type":"quorum"}' --apply-to queues
+```
+
+
+
+### throughput
+
++ `Throughput` refers to how many messages per second the broker can accept, process, and deliver.
++ It’s a measure of performance (speed) rather than reliability.
++ Factors Affecting RabbitMQ Throughput:
+    + Message Size
+    + Durability
+    + Acknowledgement
+    + QoS
+    + Number of Connections / Channels
+    + Queue Type
+    + Hardware
+    + Network and clustering
+
++ Typical Throughput Numbers
+    + Transient messages (no persistence):
+        ~50K – 100K msg/sec per node.
+
+    + Persistent messages (durable queues):
+        ~5K – 20K msg/sec per node (SSD helps a lot).
+
+    + Quorum Queues:
+        Typically 2–3x slower than classic queues (due to replication & Raft).
+
++ Improve Throughput with:
+    + SSD disks and enough RAM
+    + Use multiple channels per connection.
+    + Increase QoS prefetch.
+    + If durability isn’t required → send non-persistent messages.
+    + Use batch publishing and consumer acknowledgments.
+    + make queues as short as possible with: TTL, max-length
+
+
+### Logging
+
+- Always monitor disk space if file logging is enabled.
+- prefer console logging -> forward to ELK / Loki / Splunk.
+
+
+```bash
+cat /var/log/rabbitmq/rabbit@<hostname>.log       # General logs
+cat /var/log/rabbitmq/rabbit@<hostname>-sasl.log  # Authentication & errors
+
+rabbitmq-diagnostics log_tail      # Tail current logs
+rabbitmq-diagnostics log_location  # Show log file locations
+journalctl -u rabbitmq-server      # logging with Systemd (enable in config)
+```
+
+
+#### configuring logging
+
+```bash
+# Recommended: "info" for production, "debug" only temporarily.
+# levels: debug | info | warning | error | critical  
+
+
+## Enable console logging                  # logs in foreground
+## =======================
+log.console = true                 # Default: true     # in Docker collected by the container runtime.
+log.console.level = info          # min severity level
+
+## File Logging
+## =======================
+log.file = true                           # Enable logging to file. Files are rotated automatically.
+log.file.level = warning               # Min severity level
+log.file.rotation = 10      # number of rotated files to keep     # keeps the 10 most recent log archives and deletes older ones.
+log.file.size = 20MB        # max size before rotation       # When exceeded, the file is rotated (archived) and a new one is created.
+
+## Syslog / System Logging
+## =======================
+log.syslog = true                   # default: false # Enable logging to the system logger (syslog/journald).
+log.syslog.level = info             # min severity level
+```
+
+### Monitoring
+
+
+```bash
+rabbitmqctl list_queues name messages consumers → queue status
+rabbitmqctl list_connections → current connections
+rabbitmqctl list_channels → active channels
+rabbitmq-diagnostics status → node health
+rabbitmq-diagnostics check_running → is it running?
+rabbitmq-diagnostics memory_breakdown → memory use
+```
+
+### Plugins
+
++ rabbitmq has built-in plugins, and also we can write our custome plugin
++ you can see list of plugins in admin tab in UI Management
++ commong plugins:
+    + 
+    + Management Plugins
+        1. rabbitmq_management                  - Web UI (http://localhost:15672)
+
+    + Monitoring & Metrics
+        1. rabbitmq_prometheus                  – Prometheus endpoint at /metrics.
+        2. rabbitmq_top                         – Shows top resource consumers.
+        3. rabbitmq_tracing                     – Traces message flow through broker.
+
+    + Shovel & Federation:
+        1. rabbitmq_shovel                      – Moves messages between brokers.
+        2. rabbitmq_shovel_management           – Adds UI for shovel.
+        3. rabbitmq_federation                  – Connects brokers in different networks.
+        4. rabbitmq_federation_management       – Adds UI for federation. 
+
+    + Authentication & Authorization
+        1. rabbitmq_auth_backend_ldap           – LDAP integration.
+        2. rabbitmq_auth_backend_http           – External HTTP-based auth.
+        3. rabbitmq_auth_mechanism_ssl          – Auth via SSL certificates.
+
+    + Messaging Protocols
+        1. rabbitmq_mqtt                        – MQTT protocol support.
+        2. rabbitmq_stomp                       – STOMP protocol support.
+        3. rabbitmq_web_stomp                   – STOMP over WebSockets.
+        4. rabbitmq_amqp1_0                     – AMQP 1.0 protocol support.
+
+    + Other Useful Plugins
+        1. rabbitmq_delayed_message_exchange    – Native delayed message scheduling.
+        2. rabbitmq_consistent_hash_exchange    – Load balancing using hashing.
+        3. rabbitmq_event_exchange              – Emits broker lifecycle events as messages.
+        4. rabbitmq_stream                      – Stream messaging (newer model).
+
+
+```bash
+rabbitmq-plugins help                    # Help    # there are 4 options only
+rabbitmq-plugins list                    # List all plugins    # first column e means enabled
+rabbitmq-plugins list -e                    # List Only Enabled Plugins
+rabbitmq-plugins enable rabbitmq_management    # Enable Plugin
+rabbitmq-plugins disable rabbitmq_management    # Disable Plugin
+rabbitmq-plugins enable rabbitmq_management rabbitmq_prometheus    # Enable multiple Plugin 
+rabbitmq-plugins reset                                           # Reset to default
+```
+##### 1. Shovle plugin
+
++ it is a core RabbitMQ plugin
++ The Shovel plugin in RabbitMQ is a tool for moving (copying or transferring) messages between:
+    + different brokers,
+    + different clusters,
+    + different virtual hosts (vhosts) within the same broker.
++ It’s often used for federation, migration, backup, or cross-datacenter replication.
++ it is used in client that consumes a message and publish that message again (indirect)
++ allow coupling
++ Types of Shovels:
+    1. Static Shovel → defined in config files (rabbitmq.conf).
+    2. Dynamic Shovel → created at runtime using CLI or HTTP API (more flexible and modern).
+
+```bash
+rabbitmqctl list_parameters
+rabbitmqctl list_shovels
+```
+
+
+####### 1.1 Static Shovel (rabbitmq.conf)
+
+```bash
+# Enable shovel and management plugins
+rabbitmq-plugins enable rabbitmq_shovel                   # allow to static config
+rabbitmq-plugins enable rabbitmq_shovel_management         # allow to dynamic config
+
+# Define a shovel
+shovel.my_shovel.src-uri = amqp://user:pass@source-host/%2f
+shovel.my_shovel.src-queue = my_source_queue
+
+shovel.my_shovel.dest-uri = amqp://user:pass@dest-host/%2f
+shovel.my_shovel.dest-exchange = my_exchange
+```
+
+####### 1.2. Dynamic Shovel (CLI)
+
+```bash
+rabbitmqctl set_parameter shovel my_dynamic_shovel \
+'{
+  "src-uri": "amqp://",
+  "src-queue": "source_queue",
+  "dest-uri": "amqp://",
+  "dest-queue": "destination_queue"
+}'
+rabbitmqctl clear_parameter shovel my_dynamic_shovel              # remove shovel
+```
+
+##### 2. tracing plugin
+
++ Tracing lets you record and inspect messages that flow through RabbitMQ.
++ in simple terms: log something special
++ only use for debugging since it reduce the performance
++ Tracing can generate very large log files quickly
++ how it wokrs?
+    1. You define a trace with filter patterns (exchange, vhost, etc).
+    2. RabbitMQ copies 'matching messages' into a trace log file.
+    3. Each trace is stored in:  `File (/var/log/rabbitmq/tracing/)`
+
+
+```bash
+rabbitmq-plugins enable rabbitmq_tracing       # enable plugin
+rabbitmqctl trace_list
+rabbitmqctl trace_start -p / my-trace         # start a trace
+rabbitmqctl trace_stop -p / my-trace           # stop a trace
+rabbitmqctl trace_delete -p / my-trace         # delete a trace
+```
+
+
+##### 3. Consistene Hash Exchange
+
++ The `rabbitmq_consistent_hash_exchange` plugin introduces a new exchange type `x-consistent-hash`
++ use case:
+    1. spliting messages
+        + with this plugin we can split long queues (lots of messages)  into smaller ones (few messages)
+        + for example, instead of a queue with 20 messages, we will have 2 queues with 5 messages for each one
+        + x-consistent-hash distribute messages equally between queues (set weight 1 for all)
+    2. spliting messages with wieghts
+        + x-consistent-hash can distribute messages into 1 queue twice or 3 times or more of another one
+        + if you set 3 for weight of queue A and set 1 for weight of queue B, then queue A recive messages 3 times more than A
+
+
+```bash
+rabbitmq-plugins enable rabbitmq_consistent_hash_exchange           # enable
+```
 
 ```py
-channel.queue_declare(
-    queue='priority_queue',
-    arguments={'x-max-priority': 10}  # Support 10 priority levels
-)
-
-# Producer
-channel.basic_publish(
-    exchange='',
-    routing_key='priority_queue',
-    properties=pika.BasicProperties(priority=9),  # High priority
-    body=message
-)
+channel.exchange_declare(exchange='hashed_orders', exchange_type='x-consistent-hash')
+# Bind 2 queues with different weights
+channel.queue_bind(exchange='hashed_orders', queue='order_queue_1', routing_key='1') # Weight 1
+channel.queue_bind(exchange='hashed_orders', queue='order_queue_2', routing_key='3') # Weight 3
 ```
-
-
-
-###### 9. Sharded Queue
-
-+ Distribute load across multiple queues
-
-```py
-# Producer - shard by some key
-shard_id = hash(user_id) % 10
-queue_name = f'user_events_{shard_id}'
-channel.basic_publish(
-    exchange='',
-    routing_key=queue_name,
-    body=message
-)
-
-# Consumer - listen to specific shard
-channel.basic_consume(
-    queue=f'user_events_{shard_id}',
-    on_message_callback=callback
-)
-```
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -372,7 +372,24 @@ class BookSerializer(serializers.ModelSerializer):
 
 ## Views
 
-### FBV (function base view) 
+1. FBV
+2. CBV:
+    1. APIView
+    2. mixins
+    3. generics
+    4. viewsets
+    5. ModelViewSet
+
+| Feature          | APIView           | GenericAPIView    | ViewSet            | ModelViewSet       | FBV                |
+|------------------|-------------------|-------------------|--------------------|--------------------|--------------------|
+| **Control**      | Full              | Moderate          | Convention-based   | Least (Auto CRUD)  | Full               |
+| **Boilerplate**  | Most              | Less              | Least              | None (Auto impl.)  | None               |
+| **URL Routing**  | Manual            | Manual            | Router             | Router             | Manual             |
+| **HTTP Methods** | Manual impl.      | Mixin-based       | @action decorator  | Auto CRUD methods  | Manual impl.       |
+| **Best For**     | Custom endpoints  | Standard CRUD     | Custom REST routes | Full auto CRUD API | Simple endpoints   |
+
+
+### 1. FBV (function base view) 
 
 ```py
 from rest_framework.response import Response               # most important thing you should know is useing @api_view
@@ -425,7 +442,7 @@ def book_list(request,pk):
 ```
 
 
-### CBV (1. APIView)
+### 2.1 APIView (CBV)
 
 + `APIView` is the base class in DRF for all class based views.
 + its very similar to FBV
@@ -458,7 +475,7 @@ class BookList(APIView):                                 # class base view inher
 ```
 
 
-### CBV (2. using mixins)
+### 2.2 mixins (CBV)
 
 + The mixin classes provide specific view behavior by `action methods` not `handler methods`
 + in `mixin views` we dont need handlers like get(), post(), etc like `APIView`
@@ -500,7 +517,7 @@ class BookDetail(mixins.RetrieveModelMixin, generics.GenericAPIView):
 ```
 
 
-### CBV (3. using generics)
+### 2.3 Generic Views (CBV)
 
 + generic views provide pre-built solutions for common API patterns
 + generic views:
@@ -550,7 +567,7 @@ class BookList(generics.ListCreateAPIView):
        serializer.save(author=author)      # pk is inside url not in request.data
 ```
 
-### CBV (4. using ViewSet)
+### 2.4 ViewSets (CBV)
 
 + in generic views we should write multiple classes but in `viwesets` we can handle everything inside one class 
 + viewsets does not porvide `.get()` and `.post()` handlers, and instead porvides `.list()` and `.retrieve()` actions.
@@ -593,7 +610,7 @@ class BookViewSet(viewsets.ViewSet):
 ```
 
 
-### CBV (4. using ModelViewSet)
+### 2.5 ModelViewSet (CBV)
 
 + since `ViewSet` and `ModelViewSet` generate multiple urls for a single view class we should register the view class in `urls.py`
 
@@ -634,16 +651,6 @@ urlpatterns = [                                                    # both /books
 ]                                                                # we can add "-list" and "-detial" at the end of names_url for viewsets
 ```
 
-
-### CBV (5. all)
-
-| Feature          | APIView           | GenericAPIView    | ViewSet            | ModelViewSet       | FBV                |
-|------------------|-------------------|-------------------|--------------------|--------------------|--------------------|
-| **Control**      | Full              | Moderate          | Convention-based   | Least (Auto CRUD)  | Full               |
-| **Boilerplate**  | Most              | Less              | Least              | None (Auto impl.)  | None               |
-| **URL Routing**  | Manual            | Manual            | Router             | Router             | Manual             |
-| **HTTP Methods** | Manual impl.      | Mixin-based       | @action decorator  | Auto CRUD methods  | Manual impl.       |
-| **Best For**     | Custom endpoints  | Standard CRUD     | Custom REST routes | Full auto CRUD API | Simple endpoints   |
 
 
 ### User Model

@@ -1,7 +1,6 @@
 
 # Postgresql
 
-<!-- writing : mohamadi_arch -->
 
 
 ### Naming conventions

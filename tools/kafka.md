@@ -3,6 +3,24 @@
 # Apachie kafka
 
 + kafka is a *distributed* *publish-subscribe* *messaging system*
++ Apache Kafka is an event streaming platform used to handle real-time data feeds.
+
+## Main Use Cases
+
++ Real-time analytics (e.g., monitoring user behavior).
++ Log aggregation (collecting logs from multiple services).
++ Event-driven architectures (microservices communication).
++ Data pipelines (streaming from databases, IoT devices, etc.).
++ Messaging system (like RabbitMQ, but optimized for throughput and persistence).
+
+
+## Kafka vs RabbitMQ
+
++ Kafka stores messages for a configurable retention time (not deleted after consumption).
++ Consumers can re-read messages (offset-based).
++ Designed for high throughput (millions of messages/sec).
++ Supports both real-time and batch processing.
+
 
 ## core concepts
 
@@ -14,27 +32,31 @@
 6. Consumer Groups: Groups of consumers that share workload.
 7. Zookeeper:       Manages brokers, leader election, and metadata (deprecated in newer Kafka versions).
 8. Replication:     Copies of partitions for fault tolerance.
+9. Offset:          A unique ID for each record within a partition.
 
 
 
-## concetps
-
-We can have multiple partitions in one topic. And this partitions can be spread between multiple brokers.
-If we set a replication factor on the topic level you can create replicas of every message in every partition for that topic.
-Replication: If we copy a partition (messages of a topice) from one broker to another broker (or from one prtition to another),
-it is called *replication*. So if that broker fail we can use another. The origin partition called *Leader* or **Leader prtition* or *Broker of leader partition* and destination partitions called *follower*. So Leader writes its content(replicates) inside followers. 
-Consumers read just from leader and not from followers. Buf if Leader fail, one of the follower become leader. Followers are just relax and wait for
-new messages from Leader. Kafka guarantees that every partition replica resides on a different broker.so the maximum replication factor is the number of brokers in the cluster.
-It recommended to have at least two Replica. If you set `--replication-factor = 3` you can have 3 replica for each partition. so if you set `--partitions = 5` you can have 3 replica partition in each of 5 partition and in total 15 partitions.
-One of the brokers that is responsible for managing the state of patitions and replicas called *controlelr*. Controller electes
-automatically be zookeeper. and if the controller fail then new controller elected by zookeeper.
-controller create different partitions, assign them to diffenre brokers, reassign in sace of faluire broker, and if there was a replication 
-configuration on the topic level controller selecet leader for specific partition and select forwards. If leader fail controller decides next leader.
-If one broker fail, controller will reassaing the partition of fail broker to a remain broker. controller elect leader partition.
 
 
-The consumer offset is a way of tracking the sequential order in which messages are received by Kafka topics.
+### topic and partition
 
++ `topic` is a named stream of messages in Kafka.
++ Topic is like a category where producers publish messages and consumers subscribe to read them.
++ Topics don’t store data directly; they are split into partitions.
++ `Partition` = Physical unit of storage
++ Data is distributed across partitions
++ Producers write (publish) records into a topic.
++ Consumers read (subscribe) to records from a topic.
++ Unlike a queue, messages are not deleted once consumed — they are kept for a retention period.
++ Messages in a topic are stored on disk.
++ Retention can be time-based (7 days), size-based (1GB), or log-compaction-based (only keep the latest message per key).
+
+```
+Topic: user-events
+ ├── Partition 0 → [msg1, msg2, msg3...]
+ ├── Partition 1 → [msg4, msg5, msg6...]
+ └── Partition 2 → [msg7, msg8, msg9...]
+```
 
 
 ## diagram
@@ -174,6 +196,28 @@ so the number of servers in ensemble should be odd like 3 or 5 or 7 (and quorum 
         └─────────┘    │ └────────┘  └────────┘      │    └──────────┘
                        └─────────────────────────────┘
 ```
+
+## concetps
+
++ We can have multiple partitions in one topic. 
++ And this partitions can be spread between multiple brokers.
++ If we set a replication factor on the topic level you can create replicas of every message in every partition for that topic.
++ `Replication`: If we copy a partition (messages of a topic) from one broker to another broker (or from one prtition to another),
+it is called *replication*. So if that broker fail we can use another.
++ `Leader`: The origin partition called *Leader* or **Leader prtition* or *Broker of leader partition* and destination partitions called *follower*. 
++ So Leader writes its content(replicates) inside followers. 
++ Consumers read just from leader and not from followers. 
++ if Leader fail, one of the follower become leader. Followers are just relax and wait for new messages from Leader. 
++ Kafka guarantees that every partition replica resides on a different broker.so the maximum replication factor is the number of brokers in the cluster.
+It recommended to have at least two Replica. If you set `--replication-factor = 3` you can have 3 replica for each partition. so if you set `--partitions = 5` you can have 3 replica partition in each of 5 partition and in total 15 partitions.
+One of the brokers that is responsible for managing the state of patitions and replicas called *controlelr*. Controller electes
+automatically be zookeeper. and if the controller fail then new controller elected by zookeeper.
+controller create different partitions, assign them to diffenre brokers, reassign in sace of faluire broker, and if there was a replication 
+configuration on the topic level controller selecet leader for specific partition and select forwards. If leader fail controller decides next leader.
+If one broker fail, controller will reassaing the partition of fail broker to a remain broker. controller elect leader partition.
+
+
+The consumer offset is a way of tracking the sequential order in which messages are received by Kafka topics.
 
 ### folder contents
 ```bash

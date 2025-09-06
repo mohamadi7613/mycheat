@@ -325,6 +325,14 @@ path('posts/', views.post_list, name='post_list')                # List View
 
 1. Function-Based Views (FBV): 1. better Flexibility 2. good for full control 3. good for simple views
 2. Class-Based Views (CBV):    1. better Reusability 2. good for complex views (handling GET,POST ,...)
+    1. Define CBV
+    2. Generic Class-Based Views(GCBV): 
+        1. TemplateView
+        2. ListView
+        3. DetailView
+        4. CreateView
+        5. UpdateView
+        6. DeleteView
 
 
 ```py
@@ -805,6 +813,7 @@ if settings.DEBUG:                       # For production only if DEBUG is False
 ```
 
 
+
 #### Generic VIEW
 
 + `Generic Views` are pre-built class-based views that handle common web development patterns
@@ -1140,7 +1149,6 @@ class UploadView(FormView):
 # 4. templates
 <img src="{{ user.profile.avatar.url }}" alt="Avatar">
 ```
-
 
 
 
