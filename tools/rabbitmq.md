@@ -266,25 +266,90 @@ AMPQ:
 + all these exchanges are durable
 
 1. "" (empty string)
+    + default exchange
     + type= direct
     + Automatic binding
     + Simple point-to-point messaging to a known queue name.
-2. amq.direct	
+3. amq.direct	
     + type= direct
     + Explicit direct routing with a named exchange.
-3. amq.fanout	
+4. amq.fanout	
     + type = fanout	
     + Pub/Sub broadcasting to all bound queues.
-4. amq.topic	
+5. amq.topic	
     + type= topic	
     + Pattern-based routing using wildcards.
-5. amq.headers	
+6. amq.headers	
     + type= headers		
     + Routing based on message headers (rare).
-6. amq.rabbitmq.trace	
+7. amq.rabbitmq.trace	
     + type= topic	
     + Debugging with the Firehose tracer feature.
 
+
+### Node
+
++ A node in RabbitMQ refers to a single Erlang runtime instance
++ A node is one running Erlang virtual machine (BEAM) that has the RabbitMQ code loaded into it.
++ 1 RabbitMQ node = 1 Erlang node running RabbitMQ
++ if a node goes down, messaging will stop
++ it is used for clustering
+
+### Queue
+
++ Queue: A buffer that stores messages until a Consumer retrieves them.
++ queue is ordered collection with FIFO behavior (first in, first out)  (we can change this behavior, but not recommended)
++ queues are FIFO for producers but there is no garantee to behave exactly the same for consumers
++ both producer and consumer can create queue
++ queue is located on single node and refrenced by unique name
++ 1 queue = 1 Erlang process
++ up to 16384 messages can be loaded into RAM from one queue
++ we have perdefined queues which prefixed by "amq." and used for rabbitmq internal purposes
++ queue bound to Exchanges via bindings (Producers never send directly to a queue → always to an exchange.)
+    + Default binding: amq.default
+    + the default exchange bind to every queue
++ queues can have many properties :
+    a. durable (survives broker restart)
+    b. exclusive (for one connection only)
+    c. auto-delete (deleted when no longer in use)
++ with `policies` we can change the behavior of quote without recreating it
+
+
+### Binding
+
++ binding: Bind Queue to Exchange       `exchange --[binding]--> queue`
++ tells RabbitMQ how to route messages from an exchange to specific queues
++ Includes optional parameters like routing keys and headers
++ `rabbitmqctl list_bindings`
++ RabbitMQ server has a default exchange ---> "" (empty string) --> it is a direct exchange
++ The default exchange is implicitly bound to every queue
+
+
+##### Durability vs Persistency
+
+1. Durability:
+    a. Applies to queues (and exchanges)
+    b. A durable queue will survive broker restarts.
+    c. `channel.queue_declare(queue='task_queue', durable=True)`
+    d. ``
+    e. Durability only ensures the queue definition survives, not the messages in it.
+
+1. Persistence:
+    a. Applies to messages
+    b. A persistent message is written to disk instead of RAM
+    c. If the queue is not durable, persistent messages will still be lost on restart
+    d. Persistence only works if the queue and exchange be durable
+    e. set `delivery_mode=2` in message properties
+    ```py
+    channel.basic_publish(
+        exchange='',
+        routing_key='task_queue',
+        body=message,
+        properties=pika.BasicProperties(
+            delivery_mode=2                 # make message persistent
+        )
+    )
+    ```
 
 ### Channel
 
@@ -349,60 +414,6 @@ AMPQ:
 |  Perms: /.*     |        |  Perms: /app_a.*|          |  Perms: /app_b.*|
 +-----------------+        +-----------------+          +-----------------+
 ```
-
-### Node
-
-+ A node in RabbitMQ refers to a single Erlang runtime instance
-+ A node is one running Erlang virtual machine (BEAM) that has the RabbitMQ code loaded into it.
-+ 1 RabbitMQ node = 1 Erlang node running RabbitMQ
-+ if a node goes down, messaging will stop
-+ it is used for clustering
-
-### Queue
-
-+ Queue: A buffer that stores messages until a Consumer retrieves them.
-+ queue is ordered collection with FIFO behavior (first in, first out)  (we can change this behavior, but not recommended)
-+ queues are FIFO for producers but there is no garantee to behave exactly the same for consumers
-+ both producer and consumer can create queue
-+ queue is located on single node and refrenced by unique name
-+ 1 queue = 1 Erlang process
-+ up to 16384 messages can be loaded into RAM from one queue
-+ we have perdefined queues which prefixed by "amq." and used for rabbitmq internal purposes
-+ queue bound to Exchanges via bindings (Producers never send directly to a queue → always to an exchange.)
-    + Default binding: amq.default
-    + the default exchange bind to every queue
-+ queues can have many properties :
-    a. durable (survives broker restart)
-    b. exclusive (for one connection only)
-    c. auto-delete (deleted when no longer in use)
-+ with `policies` we can change the behavior of quote without recreating it
-
-
-##### Durability vs Persistency
-
-1. Durability:
-    a. Applies to queues (and exchanges)
-    b. A durable queue will survive broker restarts.
-    c. `channel.queue_declare(queue='task_queue', durable=True)`
-    d. ``
-    e. Durability only ensures the queue definition survives, not the messages in it.
-
-1. Persistence:
-    a. Applies to messages
-    b. A persistent message is written to disk instead of RAM
-    c. If the queue is not durable, persistent messages will still be lost on restart
-    d. Persistence only works if the queue and exchange be durable
-    e. set `delivery_mode=2` in message properties
-    ```py
-    channel.basic_publish(
-        exchange='',
-        routing_key='task_queue',
-        body=message,
-        properties=pika.BasicProperties(
-            delivery_mode=2                 # make message persistent
-        )
-    )
-    ```
 
 ### rabbitmq patterns
 
@@ -511,6 +522,7 @@ channel.queue_declare(
 
 
 ### commands
++ you can run these commands inside docker container
 
 ```bash
 

@@ -40,6 +40,7 @@ docker image      = fs snapshot  + startup command
 docker --version
 docker --help
 docker run --help                  # help of run       # docker ps --help
+docker info                        # check docker is run or not
 ```
 
 ### Connect to dockerhub
@@ -143,6 +144,31 @@ docker stats id                                                     # resourse
 3. overlay --->	Multi-host networking (Swarm mode) --->	Docker Swarm clusters
 4. macvlan --->	Assigns MAC addresses to containers --->	Legacy apps needing MAC addresses
 5. none	---> No networking --->	For testing	Specialized security use cases
+
++ bridge
+    + In the dockerfile of any image some ports are exposed.
+    + for example we expose port 8080 in dockerfile
+        ```dockerfile
+        # In the Dockerfile
+        EXPOSE 8080
+        EXPOSE 8081
+        ```
+    + It means this application inside the container is designed to be accessed on ports 8080 and 8081
+    + but it does not accessible from public internet, it only makes these ports available within the private bridge network
+    + If you want to access them from the outside you have to map the ports with -p 8080:8080 to the host
+    + with `-p <host_port>:<container_port>`  the host acts as a proxy
+    + who can access?
+        +  You, on the host machine: http://localhost:8080
+        +  Anyone on your network: http://<your-host-ip>:8080
+        +  other containers can use its private IP: http://172.17.0.2:8080 (e.g., http://192.168.1.100:8080)
++ host
+    + 'host network' mode allows a container to share the host's networking namespace (uses the host's IP address)
+    + Ports are Directly Bound (there is no need to specify -p in host network?)
+    + who can access?
+        + You, on the host machine: http://localhost:8080
+        + Anyone on your network: http://<your-host-ip>:8080 (e.g., http://192.168.1.100:8080)
+        + other containers cannot use a bridge network IP to reach it (172.17.0.2:8080 doesn't exist). 
+        + other containers must use the host's IP (192.168.1.100:8080), just like any external machine.
 
 ```bash
 docker run -p 8080:8080 imagenmae                                     # expose port local:container
@@ -274,6 +300,7 @@ docker-compose restart <service>
 docker-compose stop <service>
 docker-compose pause <service>
 docker-compose unpause <service>
+docker update --restart=no my-container                  # stop containers from starting automatically
 ```
 
 ### docker-compose.yml
