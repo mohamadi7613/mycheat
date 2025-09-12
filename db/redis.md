@@ -19,6 +19,13 @@
     2. Complete data loss if Redis fails or restarts
 
 
+### install
+
+```bash
+# there is no .exe file for wnidows ---> install wsl
+sudo apt install redis-server                # install redis
+npm install -g redis-commander               # Web-based interface
+```
 
 
 ### Start and information
@@ -40,13 +47,6 @@ save                           # save a snapshot into RDB file
 clear                          # clear the screan
 ```
 
-### Reids-benchmark
-
-```bash
-redis-benchmark -q -n 1000                 # -n for number of requests
-redis-benchmark -q -n 1000 -t get,set                #  -t or --tests specifies the list of commands for testing
-redis-benchmark -q -n 1000 -c 5                #  -c or --clients specifies the number of parallel connections
-```
 
 ### Authentication
 
@@ -60,41 +60,56 @@ auth 1234                         # set a password
 set color red                #  set value [this will replace the previous value]
 get color                      # give me the value
 exists color                    # check if exists
-set color:1 red                 # set value [this will not replace previous value]
-set color:1 ex 5                     # ex means expire in 5 seconds (delete it)
-set color:1 px 5                     # px means expire in 5 mili seconds
-expire color:1 5                        # Set 5 second for expiration
-persist color:1                          # persist means " do not exppire"
-get color:1                      # get value
-del color:1                      # delete a key-value
-ttl color:1                       # print ttl or time_to_live
-mset name ali age 12             # set multiple items
-mget name age                      # get multiple items  (faster than using get multiple times)
-rename name first_name              # rename key
-type name                           # type of key
+type color                           # type of key
 keys *                       # list all keys
 dbsize                         # number of records which are available 
+set color:1 red                 # set value [this will not replace previous value]
+set color:1 ex 5                     # ex means expire in 5 seconds (delete it)       # for existing keys and new keys
+set color:3 px 5                     # px means expire in 5 mili seconds            # for existing keys and new keys
+SET mykey "value" NX                # only if mykey does not exists
+SET mykey "value" XX                # only if mykey exists
+expire color 5                        # Set 5 second for expiration
+ttl color                       # print ttl or time_to_live      # -1 means no ttl       # -2 means not exists
+pttl color                     # print ttl in mili second
+persist color                          # persist means " do not exppire"
+del key1                      # delete a key-value
+del key1 key2              # Delete one or more keys
+mset name ali age 12             # set multiple items
+mget name age                      # get multiple items  (faster than using get multiple times)
+rename name first_name              # rename oldkey newkey
 flushall                       # clear everything in very short time
 ```
+
+
 ### Data types
 
-#### 1. String, Integer
+1. string (also for numbers)
+2. list
+3. hash
+4. set
+5. sorted set (zset)
+
+#### 1. String
 
 ```bash
 set name "mohammad"                 # there is no need for qoutation
 append name "iiii"
-set mynumber 1                    # 1 is integer
+set mynumber 1                    # 1 is not integer, it is string
+type mynumber                     # return string, but we can use math operation    
 incr mynumber                     # increament mynumber and print 2
 incr age        # age += 1     # define if not exists
 decr age                    # define if not exists (set -1)
-incrby counter 10          # define if not exists
-strlen name                  # length of string
+incrby counter 10          # define if not exists          # decr by
+strlen name                  # length of string and numbers
 ```
 
 #### 2. List
 
 ```bash
-lpush mylist A B C D       # Push left   # no need for define a key previously    # D is the most left item (first item at position 0)
+lpush a 1                  # define a list
+lpush mylist A B C D       # Push left   # D is the most left item (first item at position 0)
+lpush mylist 1,2,3,4          # 1,2,3,4 is one elemnet    # use space for multiple elements
+lpush name 1 12              # we cannot push to a string
 rpush mylist BB              # Push right to the existing list
 get mylist                    # error: use 'lrange' for lists
 lrange mylist 0 -1          # List Range gets items of list   # first element is at position 0         # -1 is the last element, -2, -3 ,...
@@ -119,7 +134,7 @@ hmget user name age                           # get multiple values
 hgetall user                           # get all fields and values
 hkeys user                             # get all field names
 hvals user                             # get all field values
-hexists user name                      # check if field exists
+exists user name                      # check if field exists
 hdel user name age                     # delete multiple fields
 hlen user                              # count number of fields
 hincrby user age 1                     # increment field 'age' by 1
@@ -134,7 +149,7 @@ hincrbyfloat user balance 10.5         # increment float field
 # a set is an unordered collection of unique strings
 sadd users_ip 1 2 3                                # set_add adds one or multiple elements
 sadd users_ip 0 1                                 # just 0 will add since 1 is repetitive
-scard users_ip                                 #  set_cardinality for length
+scard users_ip                                 #  print length (set_cardinality)
 smembers users_ip                              # print members
 sismember users_ip 3                            # check membership of an element
 spop users_ip                                # randomly remove one of elements
@@ -177,7 +192,8 @@ zcount scores 100 150                     # count members in score range
 
 + A transaction in Redis allows you to execute multiple commands in sequence and atomically.
 + `Atomic Transaction` means execute all or nothing
-+ Redis transactions do not roll back on individual command failure (e.g., a wrong type). All commands still run.
++ Commands are queued (not executed immediately). 
++ run `EXEC` to execute all queued commands at once.
 
 ```bash
 multi                        # start a transaction
@@ -185,16 +201,60 @@ set key1 "value1"             # write multiple operations
 set key2 "value2"
 incr counter
 exec                        # execute means runs all the queued commands in sequence
-discard                     #  cancel the transaction
+discard                     #  cancel the transaction instead of exec
 ```
+
+
+##### Transaction Rollback
+
++ Redis transactions do not roll back on individual command failure (just runtime errors). All commands still run.
++ redis have "All or Nothing" Execution, Not "Rollback on Error"
+    + it means all commands are queued
+    + When EXEC is called, all queued commands are run sequentially and atomically.
+    + If a command in the queue fails 'during execution'  the transaction does not stop or roll back
+
+1. runtime errors     ----> execte others
+2. syntax errors      ----> not execte all
+
+
+```bash
+MULTI
+SET x 10
+BADCOMMAND y 20   # syntax error → EXEC will fail, nothing runs
+EXEC              # returns error, no command executed
+```
+
+```bash
+SET mykey "hello"
+MULTI
+INCR mykey       # error: value is not an integer
+SET another 1
+EXEC                # execte others
+```
+
+```bash
+SET mykey 10              # OK
+LPUSH mylist "hello"   # mylist is now a List        # (integer) 1
+MULTI                   # OK
+INCR mykey              # This will work (Integer + 1)          # QUEUED
+HINCRBY mylist count 1 #  This will FAIL (List is not a Hash)        # QUEUED
+GET mykey           #  This will work       # QUEUED
+EXEC                   # Execute the whole batch
+# 1) (integer) 11        # Reply from INCR mykey (SUCCESS)
+# 2) (error) WRONGTYPE... # Reply from HINCRBY mylist (FAILURE)
+# 3) "11"                # Reply from GET mykey (SUCCESS)
+GET mykey                  #  The INCR command was NOT rolled back!     # "11"
+```
+
 
 
 #### Optimistic Lock 
 
 ```bash
-watch balance          # watch is used to monitor one or more keys before starting a transaction
+set balance 1            # balance is a string
+watch balance          # watch is used to 'monitor' one or more keys before starting a transaction
 get balance                # check balance value
-multi                      # suppose someone cahnge the value: "set balance 2"
+multi                      # suppose someone change the value: "set balance 2"
 # unwatch balance          # we can unwatch
 decr balance         # If balance changes between watch and exec, the transaction will be aborted, 
 exec                  # if balance change exec returns null (nil)
@@ -216,6 +276,8 @@ awk -F ',' '{print "set " $1 " " $2}' file.csv | redis-cli --pipe     # --pipe m
 + There are two main persistence mechanisms:  1. RDB 2. AOF
 
 ##### 1. RDB (Redis Database File)
+
++ default method in config file
 + Takes a binary snapshot of the dataset to a .rdb file on disk at regular intervals. 
 + Fast to restore, uses less disk space.
 + Data between snapshots will be lost if Redis crashes.
@@ -223,13 +285,14 @@ awk -F ',' '{print "set " $1 " " $2}' file.csv | redis-cli --pipe     # --pipe m
 
 ```bash
 # vim ~/redis-stable/redis.conf
-dbfilename dump.rdb          # RDB file name
-dir ./                         # the place of RDB file is relative --> currenat location (the directory where you start redis server)
-dir ./folder_name_for_backup                         # the place of RDB file is static for backup
+dbfilename dump.rdb          # file name of RDB file
+dir ./                         # 1. relative location for RDB file --> currenat location (the directory where you start redis server)
+dir ~/folder_name_for_backup    # 2.  static location
 # if you specify 'relative directory' for restoring date you should start the server from the location of dump.rdb
 # and if you specify 'static directory' where ever you start the server tha backup data will restore automatically
 save 900 1                   # save snapshot every 900 seconds when one key has been changed
 save 300 10                         # After 300 sec if 10 keys changed
+# these numbers are defult in config file
 ```
 
 
@@ -240,6 +303,7 @@ save 300 10                         # After 300 sec if 10 keys changed
 
 
 ```bash
+# vim ~/redis-stable/redis.conf                   # default in config: appendonly no
 appendonly yes                                    #  Enable AOF persistence  # by default it is no, make it yes if you want to use AOF method
 appendfilename "appendonly.aof"                         # name of the AOF file
 dir ./                                                  # location of AOF file
@@ -260,14 +324,45 @@ save 900 1                 # RDB
 ```
 
 
+##### 4. Manual backup
+
+```bash
+save                       # Manual snapshot (RDB)
+bgsave                     # Background save
+lastsave                   # Last save timestamp
+config set appendonly yes  # Enable AOF persistence
+```
+
+
+### Server and Admin
+
+```bash
+info                       # Server info
+config get *               # Show all config
+config set maxmemory 256mb # Set max memory
+dbsize                     # Count of keys
+flushdb                    # Clear current DB
+flushall                   # Clear all DBs
+select 0                   # Select database (0-15 default)
+monitor                    # Show real-time activity
+slowlog get                # Show slow queries
+```
 
 ### Redis distribution
 
 
+1. replication -----> master/slave  (the whole data or backup)
+2. HA (sentinel)           -----> manage replication to make a slave node to master 
+3. clustering -----> shard and split data across multiple nodes
+4. hybrid       ----> replication or HA + clustring
+
+
 #### 1. Replication
 
-+ `Replication` in Redis means copying data from one Redis server (`primary` or `master`) to one or more other servers (called `replicas`).
++ `Replication` in Redis means copying data from one Redis server (`primary` or `master`) to one or more other servers (called `replicas`)
++ master/slave or primary/replica
 + Primary accepts both reads and writes, but replicas are read-only.
++ Architecture: Single master, multiple read replicas.
 + All the servers (primary and replicas) are synced with each other.
 + If the primary server falls, we still can connect to the replicas for read-only operations.
 + This setup allows you to distribute data, scale read operations, and improve fault tolerance.
@@ -277,18 +372,61 @@ save 900 1                 # RDB
     3. The replica applies updates via a command stream from the primary.
     4. Updates are continuously synced from the primary to the replica.
 
++  If the master fails, you must manually promote a replica to master
+
+
 ```bash
-cp -r ~/redis-stable redis-s1                # copy the config folder for multiple replicas (slaves)
-redis-server ./redis-s1/redis.conf &           # run all the replicas in the background
-cat /tmp/redis-m.log                          # check the log of master to see if replicas are successfully connected or not
+# Commands in replica server        # there is no command for master to make a replica
+REPLICAOF 127.0.0.1 6379    # Make current node a replica of master at 6379
+REPLICAOF NO ONE            # Stop being a replica (becomes standalone)
+INFO replication            # Show replication status
+```
+
+####### replica config
+
+```bash
 #### redis.config
 port 6371                                   # in the config file change the port for each replicas
 logfile "/tmp/redis_s1.log"                 # change the name of log file for each replicas
 dbfilename dump_s1.rbd                        # change the name of RDB
-replicaof localhost 6370                    # add this line with 'primary-ip' and 'primary-port' to change the server into repilca
-replicaof no one                            # add this line into primary server
+replicaof 172.198.0.23 6370                    # add this line with 'primary-ip' and 'primary-port' to change the server into repilca
+replica-read-only yes                        # keep replica read-only (default)
+masterauth YourMasterPassword                  # if master uses requirepass
+requirepass YourMasterPassword                # optional but recommended
 ```
 
+####### master config
+
+```bash
+#### redis.config
+# cat /tmp/redis-m.log                          # check the log of master to see if replicas are successfully connected or not
+# sudo tail -f /var/log/redis/redis-server.log        # check logs
+replicaof no one                            # add this line into primary server (default)
+requirepass YourMasterPassword                # optional but recommended
+```
+ ????????????????????
+```bash
+cp -r ~/redis-stable redis-s1                # copy the config folder for multiple replicas (slaves)
+redis-server ./redis-s1/redis.conf &           # run all the replicas in the background
+```
+
+####### runtime config
+
++ after changing the config file use: `sudo systemctl restart redis-server`
++ this command make redis stop for moment
++ we can config redis from outside without changing the config file manually
+
+```bash
+redis-cli REPLICAOF 172.198.0.23 6379                  # make the current Redis instance a replica of master
+redis-cli CONFIG SET masterauth "YourMasterPassword"       # if master requires password, set master auth (either in conf or at runtime)
+```
+
+####### test replication
+
+```bash
+redis-cli SET test:key "hello-replication"                 # in th master node
+redis-cli GET test:key                                  # in the slave node should return "hello-replication"
+```
 
 #### 2. Redis high availablilty
 
@@ -296,10 +434,19 @@ replicaof no one                            # add this line into primary server
 + If the main Redis server crashes, another takes over and clients can keep reading/writing without interruption.
 + `Redis Sentinel` is a tool which is bundeled with redis software.
 + `Redis Sentinel` monitors Redis instances, detects failures, and performs automatic failover by promoting a replica to primary.
++ Sentinel manages the 'replication' setup to provide high availability
++ Architecture: The same master-replica setup, but with 3 or 5 (or more) additional Sentinel processes.
 + `quorum` refers to the minimum number of Sentinel nodes that must agree in election that the primary Redis server is down.
++ min quorum is 3
 + Quorum prevents false positives — if one Sentinel mistakenly thinks the primary is down (due to a network), it can't trigger failover alone. 
 + When a replica node converts to a primary node, the previous primary node will convert to a replica automatically.
-+ Typical Setup:
++ How it works?
+   1. Sentinels vote to determine if the master is down.
+   2. If quorum (majority) agrees the master is down, they automatically elect a new master from the existing replicas.
+   3. They automatically reconfigure the other replicas to replicate from the new master.
+   4. They notify client applications about the new master address.
++
++ Typical Setup:             Masters + Replicas + Sentinel Processes
     1 Primary Redis node
     1+ Replica Redis nodes
     3+ Sentinel processes for quorum
@@ -345,9 +492,12 @@ tail -f /tmp/sentinel.log                              # see logs of sentinel
                    +------------------+     +------------------+
 ```
 
-+ Redis sentinel can be install on the same redis servers, and by default it runs in port: 26379
++ Redis sentinel can be install on the same redis servers
++ with 3 sentinel = 1 master + 2 replica
++ redis port:       6379
++ sentinel port:    26379
 
-```css
+```text
                             +----------------------------------+
                             | Redis Primary (port:6379)         |
                             | - Sentinel Instance (port:26379)  |
@@ -476,6 +626,13 @@ daemonize yes                     # Optional: run Redis in the background
 ```
 
 
+### Reids-benchmark
+
+```bash
+redis-benchmark -q -n 1000                 # -n for number of requests
+redis-benchmark -q -n 1000 -t get,set                #  -t or --tests specifies the list of commands for testing
+redis-benchmark -q -n 1000 -c 5                #  -c or --clients specifies the number of parallel connections
+```
 
 
 

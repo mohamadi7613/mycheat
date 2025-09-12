@@ -204,8 +204,10 @@
 1. replica set
 2. sharded clusters
 
-+ a replica set consists of 3 machines or 3 instances
-+ each machine contains a complete replica of the data
+1. replica
+    a. a replica set consists of 3 machines or 3 instances
+    b. each machine contains a complete replica of the data
+2. clustersing
 + a sharded cluster contains a group of replica sets
 + its a partition of the db which splits data across servers
 + a sharded cluster consists of the components:

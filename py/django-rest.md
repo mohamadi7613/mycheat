@@ -43,7 +43,7 @@ INSTALLED_APPS = [
 
 # Structure
 ```py
-myproject/
+myproject/                   # backend
 │
 ├── manage.py
 ├── myproject/
@@ -80,9 +80,11 @@ class BookList(generics.ListAPIView):                # for specific view   (not 
 
 ```py
 # 1. model
-class Book(models.Model):
+class Book(models.Model):                           # similar to django
     title = models.CharField(max_length=100)
     author = models.CharField(max_length=100)
+    def __str__(self):
+        return self.title
 # 2. serializer
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
@@ -92,6 +94,7 @@ class BookSerializer(serializers.ModelSerializer):
 class BookList(generics.ListCreateAPIView):    
     queryset = Book.objects.all()               
     serializer_class = BookSerializer           
+    permission_classes = [IsAuthenticated]
 ```
 
 ### Flow of DRF
@@ -117,8 +120,9 @@ HTTP Response
 ## Serialization
 
 + after createing a `Model` we should create a `Serializer` for that model
-+ `Serialization`: process of converting complex data types (exp: Django models or querysets) into a python data types that can be easily rendered into JSON or XML
++ `Serialization`: process of converting complex data types (exp: Django models or querysets) into JSON or XML
 + `Deserialization`: process of converting JSON into a Python object
++ ORM is something else and it connect your Python models to the database
 + serialization in DRF is similar to `JSON.stringify / JSON.parse` in JS
 + we have 2 types of serialization: 1. Regular serializer 2. ModelSerializer
 + In django-core for serialization we have 3 steps: 
@@ -214,11 +218,11 @@ class BookSerializer(serializers.ModelSerializer):
     # 1. Field Options
 
     custom = serializers.SerializerCharField(read_only=True, default="custom")    # custom field  (static filed)
-    full_name = serializers.SerializerMethodField(read_only=True)    # custom field (dynamic filed)
+    full_name = serializers.SerializerMethodField(read_only=True)    # custom field (dynamic filed)   # get_full_name()
     first_name = serializers.CharField(mex_length=50)                # override fields in ModelSerializer like regular serializer
     user_email = serializers.EmailField(source='user.email')          # change name 
     # if you dont use read_only for custome fields it gets error for post request bcz this field is not in db
-    # there is no need to override fields but you can do it
+    # there is no need to override fields but you can do it like regular serializer
 
     # 2. Class Meta                        # required
 
@@ -655,7 +659,14 @@ urlpatterns = [                                                    # both /books
 
 ### User Model
 
++ Django provides a built-in User model (django.contrib.auth.models.User)
 + `User Model` in Django is the core representation of user accounts in your application.
+    1. Core Fields:     username, password, email, first_name, last_name
+    2. Permissions:     
+        a. is_active:       when we add a new user inside admin panel just this field is checked
+        b. is_superuser:    he can edit the admin panel
+        c. is_staff:        he can see admin panel   ===> staff member
+    3. Timestamps:      date_joined, last_login
 + its recommended to create a separate app for 'User Model': `python manage.py startapp userapp`
 + its recommended since we can have separate 'urls', 'serializers' and 'views' for User Model
 + It handles:
@@ -666,7 +677,7 @@ urlpatterns = [                                                    # both /books
     
 
 ```py
-# 1. default User Model Key fields
+# 1. default User Model Key fields (method 1)
 from django.contrib.auth.models import User
 
 username = models.CharField(max_length=150, unique=True)
@@ -679,28 +690,39 @@ is_staff = models.BooleanField(default=False)
 is_superuser = models.BooleanField(default=False)
 
 
-# 2. Custom User Model
-from django.contrib.auth.models import AbstractUser                     # models.py
+# 2. extend User model  (method 2)
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    birth_date = models.DateField(null=True, blank=True)
 
+
+# 3. Custom User Model by AbstractUser (method 3)
+from django.contrib.auth.models import AbstractUser                     # models.py
 class CustomUser(AbstractUser):
+# AbstractUser Keeps all fields, lets you add/change extra fields
+# good method when you don’t want a username field at all.
     phone = models.CharField(max_length=15, blank=True)                  # Add phone field 
     profile_pic = models.ImageField(upload_to='profiles/', null=True)    # Add profile_pic field
-    
-    USERNAME_FIELD = 'email' # Replace username with email
-    REQUIRED_FIELDS = []  # Removes email from REQUIRED_FIELDS
+    USERNAME_FIELD = 'email'                                            # Replace username with email
+    REQUIRED_FIELDS = []                                                # Removes email from REQUIRED_FIELDS
 
-# settings.py
+
+# 4. Build your own user model from scratch with AbstractBaseUser (method 4)
+
+
+# 5. settings.py
 AUTH_USER_MODEL = 'userapp.CustomUser'  # Point to your custom model
 
 
-# 3. User Model in other Models
+# 6. User Model in other Models
 from usersapp.models import CustomUser           # if you customise User Model
 from django.contrib.auth.models import User    # import User Model
 class Review(models.Model):                  # get user from /admin page for using in other models
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')      # we should change serializer too
     content = models.TextField()
 
-# 4. View
+
+# 7. View
 class ReviewCreate(generic.CreateAPIView):        # using user model in views
     serializer_class = ReviewSerializer
     def perform_create(self, serializer):
@@ -1143,8 +1165,9 @@ REST_FRAMEWORK = {                                       ### settings.py
     ]        
 }
 SIMPLE_JWT = {                                            # override default settings for jwt
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),        # change default
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),        # change default
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),          # change default
+    # normally we use just 2 above
     'ROTATE_REFRESH_TOKENS': True,                        # every time we refresh token it will gives us a new token for both
     'BLACKLIST_AFTER_ROTATION': True                      # Invalidates old ones
     'REFRESH_TOKEN_COOKIE_NAME': 'refresh_token',         # change default name
@@ -1634,6 +1657,45 @@ class BookTestCase(APITestCase):
         response = self.client.put(reverse('book-detail',args=[self.book.id]),data={})   # put for update
 
 ```
+
+
+### settings.py
+
+
+```py
+from pathlib import Path
+from datetime import timedelta
+import os
+
+# 1. env
+from dotenv import load_dotenv         # create a .env file for passwords, ports, urls and secret keys
+load_dotenv()                         #  inject envirenmont variables into settings
+
+# 2. allowd hosts                     # list of host/domain names that Django will serve requests for them
+ALLOWED_HOSTS = []                   # for local development only # In production, leaving it empty will break your app
+ALLOWED_HOSTS = ["*"]                 # not recommended
+ALLOWED_HOSTS = ["127.23.0.12", "api.example.com", "localhost"]    # ip of frontend
+
+# 3. cors                           # pip insall django-cors-headers
+INSTALLED_APPS = ["corsheaders"]
+MIDDLEWARE = ["corsheaders.middleware.CorsMiddleware"]
+CORS_ALLOWED_ORIGINS =    True
+CORS_ALLOWED_CREDENTIALS = True
+
+# 4. db
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',                  # os.getenv("DB_NAME")   is better to get from env file
+        'USER': 'postgres',
+        'PASSWORD': '123',
+        'HOST': '127.23.0.2',
+        'PORT': '5432'
+    }
+}
+```
+
+
 
 
 

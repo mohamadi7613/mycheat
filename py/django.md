@@ -12,7 +12,7 @@
 ## Install django
 
 ```bash
-python -m venv myvenv          # create a virtual env named myvenv
+python -m venv myvenv          # create a virtual env named myvenv      # conventional name = env
 myvenv/bin/activate            # activate virtual env in windows
 source myvenv/bin/activate     # activate virtual env in linux
 pip install django              # we can install django globally or in a virtual env
@@ -25,7 +25,7 @@ pip install django              # we can install django globally or in a virtual
 pip install django                    # its better to use virtual env for installing instead of globall instalation
 python -m django --version            # django version
 django-admin                         # make sure django is installed
-django-admin startproject myproj          # first command for create a folder project (do not use dash)
+django-admin startproject myproj          # first command for create a folder project (do not use dash)     # conventional name = backend
 python manage.py startapp IMDB_app        # create app (we can have multiple apps inside main project) [add this "IMDB_app" in INSTALLED_APPS]
 python manage.py runserver                # start server
 python manage.py runserver 8080            # start server on port 8080
@@ -50,6 +50,13 @@ if you do not run this command after changing your models, every request to that
 error: please enter the default value as valid python
 solutions: 1. add default value: `default="some value"` 2. add `null=True` 3. one-off defualt value (use None if its nullable)
 
+### when migrate?
+
+1. Initial setup of a new project
+    + Run python manage.py migrate to create the default Django tables (auth_user, sessions, admin_log, etc.)
+2. creating or modifying models
+
+
 ### How to read errors?
 duration
 
@@ -59,13 +66,19 @@ duration
 + Built-in apps (admin, auth, sessions)
 + Creating multiple apps within a single project promotes modularity, scalability, maintainability and  better Team Collaboration
 + it avoids monolithic code, making debugging and testing easier.
-+ Each app handles a `specific functionality` which is reusable and independent (e.g., users, blog, payments).
++ Each app handles a `specific functionality` which is reusable and independent (e.g., users, blog, news, payments, analytics, chat, store).
++ A project can have many apps, and apps can be reused in other projects. (Don’t make one app for every model.)
 + `Reusibility`: A well-designed users app can be reused across multiple projects.
++ E-commerce Website:
+    1. accounts → login, signup, profiles
+    2. products → product catalog, categories
+    3. cart → shopping cart
+    4. orders → checkout, invoices
+    5. payments → integration with PayPal/Stripe
+    6. reviews → product reviews
+
 
 ### User admin page
-1. active: when we add a new user inside admin panel just this field is checked
-2. staff status: you can see admin panel   ===> staff member
-3. superuser status: you can edit the admin panel
 
 
 ## Flow of Djnago
@@ -77,7 +90,7 @@ duration
     `python manage.py startapp appname` → Add to `INSTLLED_APPS= []` in settings.py
 
 3. Define Model
-    Edit models.py → `python manage.py makemigrations` → `migrate`
+    Edit models.py → `python manage.py makemigrations` → `migrate` -> register: `admin.site.register(Book)`
 
 4. Setup Admin
     `python manage.py createsuperuser` → Register model in admin.py (app folder)
@@ -135,6 +148,8 @@ class Book(models.Model):                # inherit from models.Model
     slug = models.SlugField()                           # slug HarryPotter ==> harry-potter  # allowed: letters + numbers + dash + underscore
     file = models.FileField(upload_to='uploads/')
     img = models.ImageField(upload_to='uploads/')
+    tags = ArrayField(models.CharField(max_length=50), blank=True, default=list)    # just in psql 
+    tags = models.JSONField(default=list)                                           # trick for having array in ohter dbs
 
     # 2. Relational Fields
 
@@ -143,7 +158,7 @@ class Book(models.Model):                # inherit from models.Model
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="books")          # many to one (one book can have one author)
     address = models.OneToOneField(Address, on_delete=models.CASCADE)                            # one to one  
     country = models.ManyToManyField(Country)                                                    # do not need on_delete
-    # related_name can be use inside shell when you revese query on Author ex: ramin.books.all()
+    # related_name can be use inside shell when you revese query on Author example: ramin.books.all()
     # we do not need related_name in onetoone, it create automatically by djagno
     #  on_delete is required and you must explicitly specify it
     on_delete = models.PROTECT               # Prevent deletion of referenced object    
@@ -216,7 +231,7 @@ class Book(models.Model):                # inherit from models.Model
         indexes = [models.Index(fields=['title'])]  # add index to db for faster search
 ```
 
-### Model relations
+### Model relations example
 
 1. OneToOneField: One author can have only one address
 2. ManyToManyField: Many authors can have many artiles
@@ -271,8 +286,8 @@ urlpatterns = [
     path('home/', views.home,),                             # regular url
     path('home/', views.home, name='home'),                 # named url or Namespacing Urls   # we can access this url in templates or views
     path("",views.BookView.as_view(), name="articles"),    # if you use classBase views you need as_view() function
-    path("suburl/",include("app.urls")),                   # specifiy suburl and import another URLconf module (Nested url)
-    path('old/', RedirectView.as_view(url='/new/'))        # redirect old url to new    
+    path("suburl/",include("appname.urls")),                   # specifiy suburl and import another URLconf module (Nested url)
+    path('old/', RedirectView.as_view(url='/new/')),        # redirect old url to new    
 
     # dynamic url patterns
     path('book/<int:id>/', views.book_detail),             # <int> matches any integer and "id" is a variable that we get in view function
@@ -298,7 +313,7 @@ urlpatterns = [
 
 ###### Error Handling in Urls
 ```py
-# urls.py                                                  # add this at the end of file
+# urls.py                                                  # add this at the end of file (urls.py)
 handler404 = 'myapp.views.custom_404_view'               #  when users request non-existent pages
 handler500 = 'myapp.views.custom_500_view'              #  set DEBUG = False in production to see your custom error pages
 ```
@@ -490,6 +505,7 @@ book, created = Book.objects.get_or_create(        # Get or create in one step (
 
 #### Bulk operations
 
++ QuerySet is lazy
 + Running lots of individual `.save()` is slow because each one is a separate INSERT/UPDATE
 + `bulk APIs` let you touch thousands of rows with only a handful of SQL statements
 
@@ -502,8 +518,8 @@ Book.objects.bulk_create(
 )
 
 # 2. Bulk Update
-customers = Book.objects.filter(status='inactive')               # Get queryset (not execute yet)
-for customer in customers:                                       # Update in memory
+customers = Book.objects.filter(status='inactive')               # returns queryset, not the actual data yet (not execute yet)
+for customer in customers:                                       #  Query runs here (when iterating)
     customer.status = 'active'
     customer.last_updated = timezone.now()
 
@@ -540,8 +556,9 @@ for book in books:                          # Accessing any other field triggers
     print(book.description)     # triggers separate SQL query
 ```
 
-#### prefetch_related() for M2M relationships
+#### prefetch_related() 
 
++ for M2M relationships
 + `prefetch_related()` is  designed for "to-many" relationships (ManyToMany and reverse ForeignKeys)
 + `select_related()` is designed for "to-one" relationships. (ForeignKey, OneToOne)
 
@@ -553,13 +570,39 @@ class Book(models.Model):
 class Tag(models.Model):
     name = models.CharField(max_length=50)
 
-# 1. The Problem Without Prefetching
-books = Book.objects.all()                 # This creates 1 query for books + 1 query per book for tags (N+1 problem)
-for book in books:            
-    print(book.title, [tag.name for tag in book.tags.all()])
+# 1. The Problem Without Prefetching          #  (N+1 problem) 1 for books + N for tags
+books = Book.objects.all()                 # This creates 1 query for books + 1 query per book for tags
+for book in books:                          # Django create 2 query:  1. SELECT * FROM book 2. SELECT * FROM author WHERE id=?
+    print(book.tags.name)
 
 # 2. Solution with prefetch_related()
 books = Book.objects.prefetch_related('tags').all()        # just 2 query: 1. get all books 2. get all tags
+```
+
+
+#### select_related()
+
+```py
+class Author(models.Model):
+    name = models.CharField(max_length=100)
+
+class Book(models.Model):
+    title = models.CharField(max_length=100)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="books")
+
+# 1. Without select_related
+books = Book.objects.all()
+for b in books:                       # N+1 query
+    print(b.title, b.author.name)
+
+# 2. With select_related
+books = Book.objects.select_related("author")         # just 1 query
+for b in books:
+    print(b.title, b.author.name)
+
+# related_name
+ramin = Author.objects.get(name='ramin')
+books = ramin.books.all()
 ```
 
 
@@ -1164,6 +1207,7 @@ a = Book(title = "aa", rating = 45, author = author)   # create object with Fore
 a.save()                          # save data in db
 a.delete()                       # delete data in db
 ```
+
 ### Django shull_plus
 
 ```bash
