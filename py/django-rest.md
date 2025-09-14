@@ -234,6 +234,7 @@ class BookSerializer(serializers.ModelSerializer):
         depth = 1                         # optioanl: depth for nested relations
         read_only_fields = ['created_at']   # optional: fields that are read-only
         extra_kwargs = {'password': {'write_only': True}}    # validation for additional field kwargs ??????????
+        extra_kwargs = {'author': {'read_only': True}}    # read_only for ForeignKey
        
     # 3. Common methods for customizing                 
 
@@ -276,7 +277,7 @@ class BookSerializer(serializers.Serializer):
     firstname = serializers.CharField(max_length=100)               # mostly in reqular serializers
     description = serializers.CharField(validators=[myfunction])    # validator function outside the class
 
-    # 2. Field-level validation                           # def validate_fieldname()
+    # 2. Field-level validation                           # def validate_'fieldname'()
     def validate_firstname(self, value):                      # Field level validations for specific property
         if len(value) < 3:                                   # value is the value of name attribute
             raise serializers.ValidationError("Name is too short")  # return a json {name: "Name is too short"}
@@ -342,7 +343,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 
 # 2. custome way for reverse relationship
 class AuthorSerializer(serializers.ModelSerializer):                        # books is related_name in Book model
-    books = serializers.PrimaryKeyRelatedField(many=True, read_only=True)   # 1. return ids of books
+    books = serializers.PrimaryKeyRelatedField(many=True, read_only=True)   # 1. return ids (primary keys) of books
     books = BookSerializer(many=True, read_only=True)                       # 2. return whole content of books (this called nested serializer)
     books = serializer.StringRelatedField(many=True)                        # 3. __str__ from Book model
     books = serializers.SlugRelatedField(many=True,read_only=True,slug_field='title')  # 4. specific field from Book model 
@@ -365,7 +366,7 @@ class AuthorSerializer(serializers.ModelSerializer):                        # bo
 ```py
 class BookSerializer(serializers.ModelSerializer):   
     author_obj = serializer.SerializerMethodField()     #  custom field with SerializerMethodField
-    class Meta:     
+    class Meta:                                         # call serializer inside serializer
         model = Book        
         fields = '__all__'
 
@@ -834,13 +835,13 @@ from rest_framework import permissions              # we can inherit from BasePe
 # example 1
 class AdminOrReadOnly(permissions.IsAdminUser):    # my custome permission    # this example is very famouse 
 
-    # 1. has_permission
+    # 1. has_permission                                                    # suppose you want to show sth to only users but not admins
     def has_permission(self, request, view):                                # no access to object
         base_permission = super().has_permission(request, view)             # check default permission inherited from parent
         admin_permission = bool(request.user and request.user.is_staff)     # check if the user is admin or not  (is_staff means admin)
         return admin_permission or request.method == 'GET'                  # admin or readonly
 
-    # 2. has_object_permission
+    # 2. has_object_permission                                              
     def has_object_permission(self, request, view, obj):                    # check real life example in example 2
         if request == 'DELETE':                                             # we can customize for specific methods
             return True                                                     # request.user returns 'AnonymousUser' or username
@@ -913,7 +914,7 @@ REST_FRAMEWORK = {                                              # setting.py    
 + in browser it opens a popup
 + we get 401 error if we do not send headers
 + we should set a permissions_class per view or set a permission globally in settings.py
-+ apply to all views with `permission_classes = [permissions.IsAuthenticated]`
++ apply this to views with `permission_classes = [permissions.IsAuthenticated]`
 
 
 #### 2. Session Authentication

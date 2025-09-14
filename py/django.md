@@ -570,7 +570,7 @@ class Book(models.Model):
 class Tag(models.Model):
     name = models.CharField(max_length=50)
 
-# 1. The Problem Without Prefetching          #  (N+1 problem) 1 for books + N for tags
+# 1. The Problem Without Prefetching          #  (N+1 problem) 1 for books + N for tags (inner)
 books = Book.objects.all()                 # This creates 1 query for books + 1 query per book for tags
 for book in books:                          # Django create 2 query:  1. SELECT * FROM book 2. SELECT * FROM author WHERE id=?
     print(book.tags.name)
@@ -1246,7 +1246,7 @@ LOGOUT_REDIRECT_URL = '/'  # Where to redirect after logout
 ```py
 from django.contrib.auth.models import User    # default user model
 
-user = User.objects.create_user(            # Create user
+user = User.objects.create_user(            # Create user by queryset
     username='john',
     password='secret123',
     email='john@example.com'
@@ -1298,6 +1298,7 @@ class MyLoginView(auth_views.LoginView):
 
 ### Session
 
++ Django provides a session framework
 + `session` is an ongoing connection between a client and a server [even after shutdown]
 + `Session` is ideal for storing temporary, user-specific data that needs to persist across multiple requests.
     - User Authentication: 1. Authentication flags 2. Authenticated tokens 3. Permission flags
@@ -1305,6 +1306,7 @@ class MyLoginView(auth_views.LoginView):
     - UI State: 1. Open/closed states of UI elements 2. Recently viewed items 3. Notification dismissal states 
 
 
++ HTTP is stateless → every request is independent.
 + How session works:
     1. Client Makes First Request: (logs in via django.contrib.auth)
         - No session exists yet
@@ -1317,7 +1319,19 @@ class MyLoginView(auth_views.LoginView):
         - Django retrieves the corresponding session data
 
 + `session` is server-side but `cookie` is client-side
-+ there is no table in admin panel for sessions unlike tokens in DRF
+
+#### admin panel
++ you cannot see a table in admin panel for sessions by defult unlike tokens in DRF
++ for having a table in admin panel we should register `Session` model
+```py
+from django.contrib.sessions.models import Session
+class SessionAdmin(ModelAdmin):
+    def _session_data(self, obj):
+        return obj.get_decoded()
+    list_display = ['session_key', '_session_data', 'expire_date']
+admin.site.register(Session, SessionAdmin)
+```
+
 
 ###### 1. Session: settings.py
 

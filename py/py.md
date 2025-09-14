@@ -6,6 +6,25 @@
 https://github.com/kieranholland/best-python-cheat-sheet?tab=readme-ov-file
 https://www.pythoncheatsheet.org/
 
+## compiled or interpreted language?
+
++ Python is generally considered an interpreted language, but with a twist
++ python is both
+    1. compile step:
+        a. it compiles the code to bytecode
+        b. when you run a .py file, Python first compiles your source code into bytecode (.pyc files inside __pycache__)
+        c. __pycache__ is a special folder that stores the compiled bytecode files of your Python source code
+        d. .pyc means "Python compiled"
+        e. my_script.cpython-311.pyc --> cpython-311 means: compiled with CPython version 3.11.
+        f. Next time you run the previous script, Python doesn’t need to recompile the .py file — it can just use the cached .pyc.
+    2. Interpretation step
+        + python interpreted is PVM
+        + The bytecode is then interpreted (executed) by PVM
+
+## GIL(Global interpreter lock)
++ CPython’s memory management is not thread-safe
++ GIL ensures only one thread can execute cPython bytecode at a time
+
 
 ## python version
 
@@ -98,6 +117,8 @@ min_float = sys.float_info.min              # js: Number.MIN_VALUE → smallest 
 
 ```python
 remainder = a % b          # 10 % 5 = 0
+print(5//2)                 # 2        # floor division
+print(5/2)                 # 2.5      # normal division
 exponentiation = a ** b    # 10 ** 5 = 100000
 # Assignment operators
 x += 5      # x = x + 5       # Addition assignment (+=) 
@@ -246,6 +267,7 @@ a = a.replace("string", "text")             # Replace substring → 'this is a t
 split_list = a.split()                   # Splitting a string into a list
 starts = a.startswith("this")             # Check if starts with "this" → True
 count_is = a.count("is")                   # Count occurrences of "is" → 2
+a.isalnum()                                # Check if all characters are alphanumeric (alpha + number) → True                           
 
 # 3. String operations
 "abc" + "def"                               # 'abcdef'    # concatenation
@@ -319,6 +341,10 @@ True - 1                # 0
 
 
 ###  List methods
+
++ array is a collection of elements of the same type   -> `from array import array`
++ list is a collection of elements of different types
+
 ```python
 # 1. List functions
 # len(), sorted(), reversed() are global functions
@@ -391,6 +417,9 @@ print(product)  # Output: 24
 ```
 
 ###  Tuple
+
++ Lists consume more memory than tuple
+
 ```py
 # basic
 fruits = ("apple", "banana", "cherry")   #  <class 'tuple'>  # tuple is immutable
@@ -557,6 +586,7 @@ myfunc(**data)         # unpack all the values
 ### Comprehension
 
 + `Comprehension` is a dynamic way to create new collections from iterables
++ create a new list by applying an expression to each item of another list or tuple
 + basic syntax: `[expr for item in iterable if condition]` --> expr + for + if
 
 ```py
@@ -640,7 +670,7 @@ print(id(x)==id(y))    # False (different objects)
 ```
 
 
-###### 2. Interning
+###### 2. Interning ?????
 
 + `Interning` is an optimization technique to reuse small immutable objects in memory instead of creating new ones across the program
 + When an object is interned, any other object with the same value will reference the same memory location
@@ -648,6 +678,7 @@ print(id(x)==id(y))    # False (different objects)
 + In CPython, integers in the range `-5 to 256` are interned
 + small strings are interned in python, large strings are not
 + `sys.intern()` function makes sure that identical strings share the same memory location, even if not interned by Python
++ Strings created at compile time are not interned
 
 ```py
 a = 256              # interned
@@ -656,7 +687,7 @@ print(a == b)       # True (same value)
 print(a is b)      # True (cached)
 print(id(a)==id(b))    # True
 
-c = 257               # not interned
+c = 257               # not interned  (usually)
 d = 257
 print(a == b)       # True (same value)
 print(c is d)       # False (not cached)
@@ -780,6 +811,12 @@ else:
 # 1. basic ternary
 res = "Positive" if a>0  else "Negative"                          # a > 0 ? "Positive" : "Negative"
 res =  "Positive" if x > 0 else "Negative" if x < 0 else "Zero"   # x > 0 ? "Positive" : (x < 0 ? "Negative" : "Zero")   # nested ternary
+# if x > 0:
+#    res = "Positive"
+# elif x < 0:
+#    res = "Negative"
+# else:
+#    res = "Zero"
 print("a is greater" if a > b else "b is greater")                 # ternary operator inside print
 max = (lambda x, y: x if x > y else y)(4,5)                      # ternary operator inside lambda
 
@@ -844,6 +881,9 @@ for fruit, color in zip(fruits, colors):    # zip is for creating a list of tupl
 ```
 
 #### 4. While loop
+
++ we use `whiel` when we only have an end conditio
++ we use `for` when we know how many times to repeat (list, tuple, ...)
 
 ```python
 a=10
@@ -1123,6 +1163,11 @@ print(__annotations__)          # {'x': <class 'int'>, 'y': <class 'str'>}  # Wo
 
 
 #### 1. Lambda (Anonymous) Functions
+
++ lambda can take any number of arguments but can only have one expression.
++ `lambda arguments: expression`
++ use in es6 functions
+
 ```py
 # useage: use them as an anonymous function inside another function
 add = lambda x, y: x + y             # save lambda as a variable
@@ -1134,16 +1179,6 @@ print(a)                        # 3
 
 
 
-####  6. global variables
-```py
-x = 10  # Global
-def modify_var():        # we cannot have both a global and local variable with the same name in the function
-    global x               # Use global keyword to modify
-    x = 20               # change the global variable
-
-modify_var()
-print(x)  # Output: 20
-```
 
 #### Nested function
 
@@ -1174,6 +1209,46 @@ closure_function = outer_function("Hello")   # outer function retains variables 
 closure_function()  # Output: Hello, 1
 ```
 
+#### 7.5 Variable Scope
+
++ Scope = where a variable is visible
++ LEGB Rule (L - local, E - enclosing, G - global, B - built-in)
+
+1. Local variable            within a function
+2. Global variable           At the top level of a module
+3. Enclosing                 outer of nested function
+4. Built-in                  built-in functions and variables like len(), print(), ...
+
+
+####  6. global variables
+```py
+x = 10  # Global
+def modify_var():        # we cannot have both a global and local variable with the same name in the function
+    global x               # Use global keyword to modify
+    x = 20               # change the global variable
+
+modify_var()
+print(x)  # Output: 20
+```
+
+#### enclosing variables
+
+```py
+x = 5  # global
+
+def outer():
+    y = 10  # enclosing
+    def inner():            # global and nonlocal let you modify variables outside the current scope
+        nonlocal y         # To modify an enclosing variable inside a nested function, use nonlocal
+        global x            # if we do not use nonlocal, it will create a new variable like y=56
+        y += 1   # modifies enclosing
+        x += 1   # modifies global
+        print(y, x)
+    inner()
+
+outer()
+print(x)  # modified
+```
 
 #### 8. decorator
 
@@ -1364,6 +1439,17 @@ print("Argument 1:", arg1, "Argument 2:", arg2)
 ```
 
 ### Python Modules
+
++ A module is a single file that contains Python code
++ package is a collection of related modules stored in a directory (group of modules)
++ To create a package, the directory must contain a special file named __init__.py.
+
+```py
+import math              # math is a module
+print(math.sqrt(16))
+
+import numpy as np      # numpy is a package
+```
 
 ##### 1. import libraries
 

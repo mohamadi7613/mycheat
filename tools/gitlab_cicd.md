@@ -53,7 +53,7 @@
 >> Scope of runners
     + 3 types of runners: 1. shared runners, 2. group runners, 3. specific runners
     + `Shared Runners` are pre-configured CI/CD runners available in a gitLab.com (read first line of shell)
-    + `Group Runners` are runners available to all projects in a group
+    + `Group Runners` if you have multiple projects in one group  and want them to share runners.
     + `Specific Runners` are self-hosted CI/CD runners. By default they are loced for one project but we can change it.
 
 
@@ -78,15 +78,15 @@
 
 ```yaml
 tests_job:                            # this block is a job, we can have multiple jobs
-    before_script:
+    before_script:                        # Use before_script for preparing the environment.
         - echo "running before script"
         - chmod +x test.sh           # make test.sh executable
         - ./test.sh                  # this file is inside the repo
     script:
         - echo "running tests"
-    after_script:
-        - echo "running after script"
-
+    after_script:                         # Use after_script for cleaning up or collecting results like stopping services
+        - echo "running after script"     # use after_script no matter success or failure.
+                                          # stopping a service, cleaning up temp files, uploading logs for debugging, close db
 build_job:                            # this block is another job
     script:
         - echo "building image"
@@ -168,8 +168,9 @@ deploy_job:
 
 ## stage
 + Stages define the order of execution
++ By default, jobs run stage by stage
++ All jobs in one stage must finish before the next stage starts
 + Typical stages might be 1. build, 2. test 3. deploy
-+ we can group multiple jobs into stages that run in a defined order
 + only if all jobs in the stage succeed, the next stage will be execute
 + Multiple jobs in the same stage are executed in parallel
 + Pipelines can be triggered by various events, like commits or merges
@@ -200,14 +201,28 @@ test_job:
     script: 
         - echo "running tests"
 build_job:
-    stage: build       # Run job out of order (DAG)
-    needs:            # this job depends on another job so do not run this until the other job is done
-        - tests        # they do not run in parallel
-    script: 
-        - echo "runs building"
+    stage: build       # Run job out of order (DAG =Directed Acyclic Graph)
+    needs:            # this job depends on another job 
+        - test_job        # # Only waits for test_job, not whole test stage
+    script:               # it does not matter if there are other jobs in test stage
+        - echo "runs building"   # needs: [test_job]     # syntax: we can wire jobs in array
 ```
 
+### global before_script
 
+```yaml
+before_script:                 # both job1 and job2 will first run the dependency setup, then their own script
+  - echo "Install dependencies"      # before_script per job will overrides global
+  - apt-get update -y
+
+job1:                     # first run before_script
+  script:
+    - echo "Run tests"
+
+job2:                     # first run before_script
+  script:
+    - echo "Build project"
+```
 
 ### condition with branches
 
@@ -696,6 +711,23 @@ build_image:
 + `key` is an unique identifier for job which determines whether to reuse an existing cache or create a new one
 
 ```yaml
+job_name:                               # both jobs are in the same stage and execute in parallel
+    stage: "mystage"                      # we can use cache field for each job
+    script:                               
+        - npm install                    
+    cache:                               #  key is optioan but powerful  
+        key: $CI_COMMIT_REF_NAME        # key gives a unique name for each job, if not set the default key is "default"
+        paths:                           # path means which files should be cache and where you want to save?
+            - ./node_modules             # like artifacts we should specify a path for location of cache files
+        policy: pull-push                 # pull-push means job download the cache from internet and push its changes at the end
+another_job:
+    stage: "mystage"                    # this job should be read-only since it is in the same stage and uses the same cache
+    script:
+        - npm install                    # check after this command inside the logs, for caching it will say "up to date"
+    cache:
+        key: $CI_COMMIT_REF_NAME                # this job will use the same cache
+        policy: pull                       # pull means only downlad the cache and dont upload
+
 #  Common key strategies:
 
 # 1. Branch-based Key (Common)
@@ -718,24 +750,6 @@ key: global-cache                    # Single cache shared across all pipelines/
 # Without a key, GitLab uses a global cache and all jobs using the default key share the same cache
 ```
 
-```yaml
-job_name:                               # both jobs are in the same stage and execute in parallel
-    stage: "mystage"                      # we can use cache field for each job
-    script:                               
-        - npm install                    
-    cache:                               #  key is optioan but powerful  
-        key: $CI_COMMIT_REF_NAME        # key gives a unique name for each job, if not set the default key is "default"
-        paths:                           # path means which files should be cache and where you want to save?
-            - ./node_modules             # like artifacts we should specify a path for location of cache files
-        policy: pull-push                 # pull-push means job download the cache from internet and push its changes at the end
-another_job:
-    stage: "mystage"                    # this job should be read-only since it is in the same stage and uses the same cache
-    script:
-        - npm install                    # check after this command inside the logs, for caching it will say "up to date"
-    cache:
-        key: $CI_COMMIT_REF_NAME                # this job will use the same cache
-        policy: pull                       # pull means only downlad the cache and dont upload
-```
 
 #### cache in docker runner
 + in docker executor our files are not inside file system, they are in docker container.
