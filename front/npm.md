@@ -19,6 +19,17 @@ pnpm → Best for disk efficiency & monorepos.
 Bun → Cutting-edge speed, experimental but promising.
 
 
+## NVM
+
++ for update  nodejs itslef we need this
+
+```bash
+nvm -v                 # node version manager
+nvm install node        # install nodejs 
+nvm use 24              # upgrade your node version
+```
+
+
 ## NPM
 
 ```bash
@@ -80,6 +91,7 @@ yarn install --production   # skip devDependencies
 yarn cache list             # list cache
 yarn cache clean            # clean cache
 ```
+
 
 
 

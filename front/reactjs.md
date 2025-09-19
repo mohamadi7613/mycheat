@@ -1,5 +1,5 @@
 
-
+# Reactjs
 
 https://github.com/uanders/react-redux-cheatsheet
 https://reactcheatsheet.com/
@@ -35,7 +35,7 @@ src/
 |-- components/                  # Reusable components
 |   |-- ExampleComponent.jsx
 |-- containers/                  # components benefits redux
-|-- pages/                       # Page-level components
+|-- pages/                       # Page-level components   (or screens/)
 |   |-- Feature1Page.jsx
 |   |-- Feature2Page.jsx
 |-- hooks/                       # custome hooks
@@ -46,6 +46,7 @@ src/
 |-- assets/                      # assets
 |-- __tests__/                   # writing tests
 |-- index.js                     # Application entry point
+|-- main.jsx                     # Same index.js in new versions
 |-- App.js                       # Root component
 ```
 
@@ -165,6 +166,8 @@ useEffect(()=>{
 
 # 3. Hooks
 
+### Hooks: useState
+
 ### 3. Hooks: useEffect
 ```js
 // why we need? bcz if we save the result of axios in setSate it will re-render [infinit loop]  
@@ -263,7 +266,7 @@ export default function Counter() {
 ```
 
 
-##  3. Hooks: Context
+##  3. Hooks: useContext
 
 ```js
 ////context.js

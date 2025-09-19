@@ -223,6 +223,10 @@ const doubledNumbers = numbers.map((item,index,array) => item * 2); // [0, 2, 4,
 const evenNumbers = numbers.filter((item,index,array) => item % 2 === 0); // [0, 2, 4, 6]
 const sum = numbers.reduce((preValue, currentValue, currentIndex, array) => preValue + currentValue, 5); // 5 is initial value and by default is the first element of array
 const greaterThanFour = numbers.find((item,index,array) => item>4); // 5  //returns the first element
+```
+#### array es6 methods
+
+```js
  // these methods takes a callback function to execute for each element in the array.   [callback(0), callback(1), callback(2), ...]
 const students = [  
   { name: "Nick", grade: 10 },
@@ -235,6 +239,8 @@ const aboveTenSum = students
   .filter(grade => grade >= 10) // we filter the grades array to keep those 10 or above
   .reduce((prev, next) => prev + next, 0); // we sum all the grades 10 or above one by one
 ```
+
+
 ### Dates
 ```js
 Sat Jul 08 2023 12:18:24 GMT+0530 (India Standard Time)
@@ -850,6 +856,32 @@ import a, { b, c } from './A.js';   // named export // a is default export
 import * as all from './A.js';
 export * from './A.js';      // we can re-export from another file
 export { a };
+```
+
+### es6 import and export
+
+```js
+//     1. Named Exports (Multiple per module)
+export const name = 'John';
+export let age = 30;
+export const PI = 3.14159;
+
+
+// 2. Exporting multiple items at once
+const name = 'John';
+let age = 30;
+const PI = 3.14159;
+exprot {name, age, PI}
+
+// 3. default export (one per module)
+const mainFunction = () => { /* ... */ };
+export default mainFunction;                     // Exporting a single value as default
+export default function() { /* ... */ };          // Or export directly
+export default 42;                              // export directly 
+
+// 4. export a variable
+const a = []
+default export a
 ```
 
 ### Iterators and Generators

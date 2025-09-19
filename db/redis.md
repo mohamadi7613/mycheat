@@ -85,7 +85,7 @@ flushall                       # clear everything in very short time
 
 1. string (also for numbers)
 2. list
-3. hash
+3. hash   ---> json
 4. set
 5. sorted set (zset)
 

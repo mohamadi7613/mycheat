@@ -14,6 +14,8 @@ npm create vite@latest my-project                             # interactively
 npm create vite@latest my-react-app -- --template react      # pre defined react
 yarn create vite my-react-app --template react               # install with yarn
 pnpm create vite my-react-app --template react               # install with pnpm
+
+npm run dev                                              # start react app
 ```
 
 

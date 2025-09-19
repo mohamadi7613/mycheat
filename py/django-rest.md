@@ -393,6 +393,8 @@ class BookSerializer(serializers.ModelSerializer):
 | **HTTP Methods** | Manual impl.      | Mixin-based       | @action decorator  | Auto CRUD methods  | Manual impl.       |
 | **Best For**     | Custom endpoints  | Standard CRUD     | Custom REST routes | Full auto CRUD API | Simple endpoints   |
 
+1. Handeler method: like Nodejs --> get, post, put, delete
+2. Action method: more specific, higher-level concept ---> create, update, partial_update
 
 ### 1. FBV (function base view) 
 
