@@ -10,7 +10,6 @@
 ## UI
 
 ```bash
-npm i react-bootstrap bootstrap                      # without bootstrap ui elemnts get wrong styles (we should import min.css)
 npm i react-fontawesome         # icons
 ```
 
@@ -18,7 +17,6 @@ npm i react-fontawesome         # icons
 ### theme
 
 ```bash
-npm i bootswatch                # add style automatically
 
 ```
 

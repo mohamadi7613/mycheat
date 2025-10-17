@@ -32,6 +32,36 @@ docker container = namespacing + cgroups
 docker image      = fs snapshot  + startup command
 
 
+### docker roadmap
+
+```bash
+         +-----------------+
+         |   Dockerfile    |
+         +--------+--------+
+                  |
+                  v
+          docker build
+                  |
+                  v
+         +-----------------+
+         |     Image       |
+         +--------+--------+
+                  |
+          docker run / create
+                  |
+                  v
+         +-----------------+
+         |   Container     |
+         +-----------------+
+                  |
+            docker compose up
+                  |
+                  v
+         +-------------------------+
+         |   multiple container    |
+         +-------------------------+
+```
+
 
 ## 1.  Docker commands
 
@@ -71,11 +101,44 @@ docker rmi myname              # rename an image
 docker history ID
 ```
 
+### docker lifecycle
+
+```bash
+docker pull nginx:latest                  # 1. download base image (dockerfile will downlaod this base image automatically)
+docker build -t myimage .                  # 2. build image
+docker create myimage                     # 3. create container but not started yet
+docker start myimage                      # 4. start container
+docker run myimage                       # 5. run container (create + start)
+docker attach myimage                     # 5. attach container
+docker rename myimage newimage            # 6. rename container
+docker pause myimage                      # 6. pause container
+docker unpause myimage                    # 7. unpause container
+docker stop myimage                       # 8. stop container
+docker kill myimage                        # 9. kill container
+docker wait myimage                        # 10. wait container (block)
+docker restart myimage                    # 11. restart container
+docker rm myimage                         # 9. remove container (stop it first)
+docker rmi myimage                        # 10. remove image
+```
+
+### Build an image
+
+```bash
+docker build .                             # Build from current directory
+docker build /path/to/build/context          # Build from specific directory
+docker build github.com/user/repo           # Build from Git repository
+docker build - < context.tar.gz                # Build from tar archive
+docker build -t my-app:latest .             # Build with a tag
+docker build -f Dockerfile.dev .               # Build from specific Dockerfile
+docker build --no-cache -t my-app              # Build without cache
+docker build --memory=1g -t my-app .             # Set memory limits for build
+docker build --build-arg NODE_ENV=production -t my-app .      # Set build arguments
+```
+
+
 ### Cotainer
 
 ```bash
-docker ps                                    # list all containers
-docker ps -a                                # list all containers including stopped
 docker create busybox                       # create container id ==> copy this id for "docker start" 
 docker start id                              # echo container id for us and run that command in background 
 docker start -a id                              # start container with -a (attach) for run in front of us 
@@ -116,6 +179,20 @@ docker diff id                                       # list of changes
 docker commit id                                   # save a container as an image
 ```
 
+
+### info
+```bash
+docker ps                                    # list all containers
+docker ps -a                                # list all containers including stopped
+docker port id                                                   # show port of container
+docker logs id                                                   # show logs
+docker inspect id                                                # show info
+docker top id                                                      # list of process
+docker events id                                                   # list of evnets
+docker stats id                                                     # resourse
+docker diff id                                                     # list of changes
+```
+
 ### cleanup
 ```bash
 docker system prune                            # Cleans up dangling images, containers, volumes, and networks
@@ -126,13 +203,26 @@ docker image prune -a                           # plus not used as a container
 docker volume prune                            # not used
 ```
 
-### info
+### Registry & Repository
+
 ```bash
-docker port id                                                   # show port of container
-docker top id                                                      # list of process
-docker events id                                                   # list of evnets
-docker stats id                                                     # resourse
+docker login
+docker logout
+docker search
+docker pull
+docker push
 ```
+
+### docker prune
+
+```bash
+docker system prune
+docker volume prune
+docker network prune
+docker container prune
+docker image prune
+```
+
 
 ### Docker Network
 + Apps inside container runs in an isolated docker network by default.
@@ -154,7 +244,7 @@ docker stats id                                                     # resourse
         EXPOSE 8081
         ```
     + It means this application inside the container is designed to be accessed on ports 8080 and 8081
-    + but it does not accessible from public internet, it only makes these ports available within the private bridge network
+    + but it does not accessible from public internet, its just a metadata, a hint to other developers, tools, or Docker Compose
     + If you want to access them from the outside you have to map the ports with -p 8080:8080 to the host
     + with `-p <host_port>:<container_port>`  the host acts as a proxy
     + who can access?
@@ -205,6 +295,12 @@ docker run -p 3000:3000 -v :/var/www/myproject imagne_name       #set voulme and
 docker run -v vol1:/data1 -v vol2:/data2 nginx     # multiple volumes
 ```
 
+### docker volume in docker compose
+
+##### 1.
+##### 1.
+
+
 ## 2. Create an Image
 
 1. create a folder with "myimage" in your project(nodejs folder).
@@ -212,6 +308,91 @@ docker run -v vol1:/data1 -v vol2:/data2 nginx     # multiple volumes
 3. create an image with command in that folder ```docker build .``` ==> gives an id ===> docker run id
 4. or: `docker build -t imagename .` ==> tag for name
 5. `docker build -t username/imagename:latest .`   your dockerid/repo or projectname/version
+
+
+#### step 0: dockerfile instruction
+
+```bash
+# 1. FROM
+FROM ubuntu:20.04
+FROM python:3.9-slim
+FROM node:14-alpine
+FROM scratch            # Empty base image
+
+# 3. COPY                                    # COPY source destination
+COPY ./index.js /usr/src/app/index.js
+COPY . /app
+COPY requirements.txt /tmp/
+
+# 4. ADD                                      # Similar to COPY but with additional features like URL download and tar extraction
+ADD https://example.com/file.tar.gz /tmp/
+ADD source.tar.gz /app/                         # Automatically extracts
+ADD . /app                                   # same as COPY
+
+# 2. RUN
+RUN apt-get update && apt-get install -y python3
+RUN npm install
+# Exec form (recommended for complex commands)
+RUN ["/bin/bash", "-c", "echo 'Hello World'"]
+
+# 5. CMD
+CMD ["node", "index.js"]                 # Exec form (recommended for simple commands)
+CMD ["npm", "start"]
+CMD ["python", "app.py"]
+CMD npm start                           # Shell form
+
+# 6. ENTRYPOINT                                     # run as an executable
+ENTRYPOINT ["python", "app.py"]                    # Exec form (recommended)
+ENTRYPOINT python app.py                              # Shell form
+
+# 7. WORKDIR
+WORKDIR /path/to/directory
+RUN pwd  # Output: /path/to/directory
+
+# SHELL                                    # Changes the default shell
+SHELL ["/bin/bash", "-c"]
+RUN echo "Using bash now"
+SHELL ["powershell", "-command"]
+
+# 8. ENV                                  # Sets environment variables
+ENV NODE_ENV production
+ENV APP_HOME /app
+
+# 9. ARG                                 # Defines build-time variables
+ARG VERSION=latest
+ARG USERNAME
+
+# 10. LABEL                                 # Adds metadata to the image
+LABEL version="1.0"
+LABEL description="My application"
+LABEL maintainer="dev@example.com"
+
+
+# 11. EXPOSE                               # Documents which ports the container listens on.
+EXPOSE 443
+EXPOSE 3000/tcp
+
+# 12. VOLUME
+VOLUME /data
+VOLUME ["/var/log", "/var/db"]
+
+# 13. USER
+USER nobody
+USER 1000:1000
+USER appuser:appgroup
+
+
+# 14. AS (for multi-stage builds)
+FROM node:14 As builder                    # first stage 
+WORKDIR /app                               # Later stages in your Dockerfile can reference files or results from it.
+COPY package.json .                       # builder is the name of the stage
+RUN npm install                           # use --from=<name> to copy files or artifacts
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine                            # second stage
+COPY --from=builder /app/dist /usr/share/nginx/html         # copy only the final built artifacts into a clean, minimal runtime image.
+```
 
 
 #### step 1: create a dockerfile
@@ -276,6 +457,7 @@ CMD ["node", "server.js"]               # run server
 ```
 
 
+
 ## 3. docker-compose
 + Docker Compose is a tool for defining and running multi-container applications.
 + In windows and Mac it will install with "docker desktop", in linux you should install it separately.
@@ -302,6 +484,23 @@ docker-compose pause <service>
 docker-compose unpause <service>
 docker update --restart=no my-container                  # stop containers from starting automatically
 ```
+
+### docker-compose instructions
+
+```bash
+# 1. version                                       # Specifies the Compose file format version.
+version: '3.8'                            # Supported versions: '2', '3', '3.8', '3.9' etc.
+
+# 2. services
+services:
+  web:
+    # web service configuration
+  database:
+    # database service configuration
+
+# 
+```
+
 
 ### docker-compose.yml
 
@@ -356,6 +555,57 @@ networks:                         # if we had created a netowrk with command lin
         external:               # do not create a new network, use an existing one
             name: my-network      
 ```
+
+### docker file structre
+
+```bash
+project-root/
+├── src/                        # Your main application code
+│   ├── app/                    
+│   ├── requirements.txt
+│   └── ...
+│
+├── Dockerfile                  # Main (default) Dockerfile, usually for production
+├── Dockerfile.dev              # Development version (with hot reload, debug tools, etc.)
+├── docker-compose.yml          # Default compose (often production-ready)
+├── docker-compose.dev.yml      # Compose file for development
+├── docker-compose.test.yml     # Optional: for CI/testing pipelines
+│
+├── .dockerignore               # Ignore unnecessary files during image build like node_modules
+├── .env                        # Environment variables (used by docker-compose)
+│
+├── scripts/                    # Optional: helper scripts for building, cleaning, etc.
+│   ├── build.sh
+│   ├── run_dev.sh
+│   └── ...
+│
+└── README.md
+```
+
+### dockerignore
+
+```bash
+# Ignore Git files
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Node modules
+node_modules
+
+# Local configs
+*.log
+.vscode
+.idea
+```
+
+
 
 ## tags
 ```bash

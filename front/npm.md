@@ -44,6 +44,7 @@ npm install axios --save     # --save is default (adds to dependencies)
 npm install axios -g     # Install globally
 npm install axios --save-dev   # Install as dev dependency
 npm install axios --production   # Install only in production
+npm install --only=production   # Install only in production
 npm install axios@1.2.3  # Install specific version
 npm uninstall axios      # Uninstall package
 npm uninstall -g axios   # Uninstall global package

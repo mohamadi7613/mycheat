@@ -1,6 +1,14 @@
 
 # Bootstrap
 
+## Install
+
+```bash
+npm i react-bootstrap               # we import Components from react-bootstrap
+npm i bootstrap                      # without bootstrap ui elemnts get wrong styles (we should import min.css in main.jsx)
+npm i react-router-bootstrap                                # <LinkContainer > for routing of nav component or button in bootstrap
+npm i bootswatch                # add your choosen style and theme automatically
+```
 
 
 ## 1. Responsive Design

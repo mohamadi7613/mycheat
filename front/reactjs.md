@@ -336,7 +336,80 @@ function withAuthRequired(component){ // by convention starts with "with"
 
 # 4. React Lib:
 
-## 4. React Lib:React-Router
+## 4. React Lib:React-Router-Dom
+
++ React Router is a multi-strategy router
++ we can use react-router as a liberay (minimally) or as a framework (maximally)
++ inside doc there are 3 mode:      ---> read picking mode inside docs
+    1. framework mode               ---> using vite at first
+    2. data mode                    ---> configuring routes outside jsx (recommend)
+    3. declarative mode             ---> simple jsx component routing
+
+```bash
+npx create-react-router@latest my-react-router-app         # use as a framework
+npm i react-router                                         # use as a library
+npm i react-router-bootstrap                                # <LinkContainer > for routing of nav component or button in bootstrap
+# npm i react-router-dom                                   # deprecated   # in past extends react-router with <BrowserRouter> and <Link>
+# npm i react-router-native                                # react native
+# import ReactDOM from "react-dom/client";         ReactDOM.createRoot(root).render(<App />);          # inside react
+```
+
+#### 0. react-router-dom
++ in version 7 react-router-dom is a re-export of react-router
+```js
+import { BrowserRouter } from 'react-router-dom';        // deprecated
+import { BrowserRouter } from "react-router";           // version 7
+```
+
+
+#### 1. Route component
+```js
+import { Routes, Route } from "react-router";
+
+function App() {                         // write in app.jsx
+  return (                          
+    <div>
+      <Routes>
+        <Route index element={<StepOne />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+      </Routes>
+    </div>
+  );
+}
+```
+
+
+#### 2. useParams
+
+```js
+<Route path="/product/:id" element={<Product />} />           // :id is dynamic URL segment 
+
+// Product.js
+import { useParams } from 'react-router';
+let params = useParams();
+console.log(params.id)                                    // get id from urls
+
+// react-router older versions
+function Product({match}) {
+   console.log(match.params.id) 
+}
+```
+
+#### 2. Link component
+
+
++ using <a href='' /> in react will refresh the page in browser
++ but <Link to='' /> makes the page SPA and not refresh the whole page
+
+```js
+import { Link } from 'react-router-dom';
+<Link to="/">Home</Link>        // <a href="/">Home</a>
+```
+
+#### 3. Configuring routes
+
++ Routes are configured in app/routes.ts
 
 ```js
 
