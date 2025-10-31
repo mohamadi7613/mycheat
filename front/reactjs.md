@@ -166,6 +166,22 @@ useEffect(()=>{
 
 # 3. Hooks
 
++ Basic hooks: 1. useState, 2. useEffect 3. useRef 4. useReducer 5. useContext
++ additional hooks: 1. useCallback 2. useMemo 3. useTransition 4. useDeferredValue
+
+| Category                  | Hooks                               |
+| ------------------------- | ----------------------------------- |
+| **State**                 | `useState`, `useReducer`, useActionState, useOptimistic            |
+| **Side Effects**          | `useEffect`, `useLayoutEffect`, useInsertionEffect     |
+| **Context**               | `useContext`                        |
+| **Refs / DOM**            | `useRef`, `useImperativeHandle`     |
+| **Performance**           | `useMemo`, `useCallback`            |
+| **Concurrent / Suspense** | `useTransition`, `useDeferredValue` |
+| **Debugging**             | `useDebugValue`, useId                     |
+| **Custom**                | Your own combinations of the above  |
+
++ when not to use hooks ????????????
+
 ### Hooks: useState
 
 ### 3. Hooks: useEffect

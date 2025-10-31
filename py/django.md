@@ -1556,4 +1556,181 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 9. 429 Too Many Requests - Throttled
 
 
+### Settings
+
++ creates automatically by `django-admin startproject`
+
+#### BASE_DIR
+
++ BASE_DIR points to the root directory of your Django project - the directory that contains manage.py.
++ `__file__` shows path to the current Python file
+
+```py
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent.parent                 # .resolve() - Converts path to an absolute path
+```
+
+##### SECRET_KEY
+
++ when you create a new Django project it will automatically generate a SECRET_KEY
++ Django will refuse to start if SECRET_KEY is not set.
++ it is crucial to generate a strong, unique key for production 
++ The default key starts with 'django-insecure-' to remind you it's not production-ready.
++ If SECRET_KEY is exposed: ALL encrypted data is compromised
++ it is used to securely sign session cookies, reset passwords, CookieStorage, FallbackStorage, etc. 
+
+```py
+########## 1. django-environ                  #  pip install django-environ
+import os                            # do not keep it in your settings.py
+from pathlib import Path                            # secret manager ???????
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+
+######## 2. python-decouple                  #  pip install python-decouple
+from decouple import config
+SECRET_KEY = config('SECRET_KEY')
+
+######## 3. dotenv
+from dotenv import load_dotenv               # pip install python-dotenv
+import os
+load_dotenv()  # Load environment variables from .env file
+SECRET_KEY = os.getenv('SECRET_KEY')
+```
+
+
+###### Generate New Key
+
+```py
+####### 1. Django's built-in function
+from django.core.management.utils import get_random_secret_key
+print(get_random_secret_key())
+
+####### 2. secrets (recommended)
+import secrets
+secret_key = secrets.token_urlsafe(50)           # Generate a 50-character secret key
+print(secret_key)
+
+####### 3. openssl 
+openssl rand -base64 32                         # generate a 32-byte (256-bit) random value
+```
+
+###### SECRET_KEY_FALLBACKS
+
++ Periodically update your SECRET_KEY
++ "Secret_Key Rotation" is the practice of periodically changing your application's secret key to enhance security
++ If SECRET_KEY changes, all users get logged out
++ strategy: 1. Time-Based Rotation 2. Version-Based Rotation
++ If SECRET_KEY is compromised: 
+    - IMMEDIATELY rotate the SECRET_KEY
+    - Force logout all users (sessions invalidated)
+    - Invalidate all password reset tokens
+
+
+```py
+SECRET_KEY = "current-key-q3-2024"  
+SECRET_KEY_FALLBACKS = ["previous-key-q2-2024"]
+```
+
+##### DEBUG
+
++ set to False in production
++ set DEBUG in .env file
++ When DEBUG = True, Django will show security warnings for:
+    - Insecure passwords
+    - Missing security middleware
+    - Common security misconfigurations
++ When DEBUG = False:
+    - Django hides debug info and shows a generic error page (500.html).
+    - Set ALLOWED_HOSTS correctly
+    - Configure static files manually (since Django won’t serve them automatically).
+    - Provide custom error templates: (500.html, 404.html, etc.).
+
+```py
+from django.conf import settings
+print(settings.DEBUG)                  # check current debug mode
+
+if DEBUG:
+    
+```
+
+##### INTERNAL_IPS
+
+```py
+# For local dev only
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+```
+
+##### django-debug-toolbar
+
+
+##### ALLOWED_HOSTS
+
++ When DEBUG = False, Django doesn’t work at all without a suitable value for ALLOWED_HOSTS.
++ This setting is required to protect your site against some CSRF attacks.
+
+```py
+ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com']
+```
+
+
+#### CSRF
+
+```py
+CSRF_TRUSTED_ORIGINS = [
+    'https://app.example.com',
+]
+```
+
+##### 1. Cors
+
++ The user’s browser (people) never sends its own IP in the Origin header.
++ The browser sends the origin of the website that made the request (React server)
++ Therefore, the Django server only needs to allow the origin of the frontend, not every user.
++ CORS cares about the origin domain/IP:port of the frontend app
+
+```py
+CORS_ALLOWED_ORIGINS = [
+    "https://yourfrontend.com",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "https://yourfrontend.com",
+]
+```
+### whitenoise ??
+
+
+#### URLs
+
+
+#### WSGI
+
+#### Gunicorn
++ Never use runserver in production.
++ Use Gunicorn, uWSGI, or Daphne behind Nginx.
+
+```bash
+gunicorn myproject.wsgi:application --bind 0.0.0.0:8000
+```
+
+#### Database
+
+#### Templates
+
+#### Internationalization
+
+
+
+
+#### DRF
+
+
+#### Logging
+
+
+##### Deployment
+
+
+
+
 
