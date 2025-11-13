@@ -1145,13 +1145,11 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):     # def
 ### 4. JWT Authentication
 
 + simplejwt package: `pip install djangorestframework-simplejwt`
-+ 
-+ JWT is a digitally signed token that proves a user's identity. It’s like a digital passport.
-+ a JWT is look like this: `xxxxx.yyyyy.zzzzz`
++ a JWT is look like this: `xxxxx.yyyyy.zzzzz` --> HEADER.PAYLOAD.SIGNATURE
 + it has 3 parts (all Base64 encoded):
     1. Header – type of token and signing algorithm
     2. Payload – user data (claims)
-    3. Signature – verifies that the token is untampered
+    3. Signature – verifies that the token is untampered and hasn’t been altered or forged.
 
 + JWT is not depondent on databse like 2. Token Authentication
 + The only disadvantage of JWT is that we can not control the tokens from server and db.

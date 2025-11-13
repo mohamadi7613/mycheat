@@ -7,6 +7,7 @@
 + TS adds static type checking
 + compiler can catch errors at compile time, before your code runs
 + we can’t console.log types of variables (ts types) directly at runtime (TypeScript types exist only at compile time)
++ if we have errors, ts still compiles into es5
 + How It Works
     - You write code in .ts files.
     - TS compiles your code into plain JavaScript (es5).
@@ -42,8 +43,8 @@ ts-node | nodemon --watch               # install ts-node to run .ts files
 
 ## Type Checking
 
-+ js is `run-time type checking` so we can errors when the app is running
-+ ts is `static type checking` so we can see errors in the vscode 
++ js is `run-time type checking` so we can see errors when the app is running
++ ts is `static type checking` so we can see errors in the editor like vscode
 
 ```js
 function sum(a,b,c){return a+b+c}
@@ -56,7 +57,7 @@ age = 'hello'   // you can see error in your editor
 ### Basic Types
 
 + hover in your editor to see the types
-+ the syntax is called "type annotation"
++ the syntax is called `type annotation`
 
 ```js
 let isDone: boolean = false;
@@ -64,11 +65,12 @@ let age: number = 25;
 let name: string = "John";
 
 let hobbies: string[] = ['Programming', 'Cooking'];  // Array of strings
-let a: number[2] = [1, 2];                            // number[2] is not valid TypeScript syntax (error)
 let t: [number, string] = [1, 'hello'];               // tuple of number and string (typed array)
+// let a: number[2] = [1, 2];                            // Error:  number[2] is not valid TypeScript syntax (error)
 
-let symbolValue: symbol = Symbol("id");               // symbol type     
+let symbolValue: symbol = Symbol("id");                             // symbol type     
 let user: { name: string; age: number } = { name: "John", age: 30 };   // object type 
+Enum Color { Red, Green, Blue }                                     // enum type
 
 // 1. void, 2. null, 3. undefined, 4. unknown, 5. any, 6. never
 let myCar: any = 'BMW';                                 // try to not use any 
