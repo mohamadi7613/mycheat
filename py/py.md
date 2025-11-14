@@ -1064,6 +1064,8 @@ foo(a);  // a becomes 5        // Changes affect the original variable.
 
 + If the object is mutable, changes inside the function can affect the original.
 + If the object is immutable, reassigning inside the function does not affect the original.
++ "Call by object reference" - all parameters are references, but immutables cannot be modified in place
++ java and python have similar behavior but in java true copy passed and in python reference passed, but cannot modify
 
 ```py
 # 1. mutable
