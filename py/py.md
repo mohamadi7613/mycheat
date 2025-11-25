@@ -26,6 +26,7 @@ https://www.pythoncheatsheet.org/
 + GIL ensures only one thread can execute cPython bytecode at a time
 
 
+
 ## python version
 
 ```py
@@ -249,6 +250,10 @@ if []:                     # [], {}, "", set(), range(0) are False
 ```
 
 ### String methods
+
++ Use " " when the string contains ' ' and vise versa
++ Most Python code uses single quotes ' ' by convention
+
 ```py
 a = "this is a string"                      # define a string
 esc = "I don't \n know"                      # \n = new line

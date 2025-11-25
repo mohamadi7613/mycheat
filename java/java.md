@@ -2,9 +2,10 @@
 # Java
 
 + java  developed by Sun Microsystems (now owned by Oracle Corporation)
++ Today, the Java compiler is written in Java, while the JRE is written in C.
++ Syntax similar to C/C++ but without complex features like pointers
 + java follows the principle of "Write Once, Run Anywhere" (WORA)
 + Java code compiles to bytecode, not machine code. This bytecode runs on Java Virtual Machine (JVM)
-+ Syntax similar to C/C++ but without complex features like pointers
 + Automatic memory management (Garbage Collection)
 + Advantages: 1. Multithreaded 2. safe (no pointer)
 + Cons:        1. Startup Time 2. Memory Consumption 3. Slower than  cpp 4. Verbose (More code required)  
@@ -18,6 +19,46 @@ Java 11 (2018) - LTS version, new features
 Java 17 (2021) - Current LTS version
 Java 21 (2023) - Latest LTS version
 
+### Java Frameworks
+
+1. Web	        Spring, Spring Boot, JSF, Struts
+2. ORM	        Hibernate, JPA, MyBatis
+3. Testing	    JUnit, TestNG, Mockito
+4. Build	    Maven, Gradle, Ant
+
+## Java Technologies
+
++ Spring Framework - Comprehensive framework for enterprise Java
++ Spring Boot - Simplifies Spring application setup
++ Hibernate - Object-Relational Mapping (ORM) tool
++ Jakarta EE - Enterprise edition specifications
++ Servlets & JSP - Traditional web technologies
++ Spring MVC - Model-View-Controller framework
++ JSF - JavaServer Faces for component-based UI
++ Maven - Dependency management and build tool
++ Gradle - Flexible build automation tool
+
+## Java Ecosystem
+
+1. Java SE      standard Edition            Core Java, standard libraries like collections, xml, applet, jdbc
+2. Java EE      Enterprise Edition          Enterprise apps, Servlets, EJB, websocket
+3. Java FX                                  GUI apps (Merged to Java SE 8)
+4. Java ME      Micro Edition               Mobile / IoT, libs like Wireless Messaging
+
+### Java implementations
+
++ they are different JVM and JDK, not the language itself
++ "Java implementations" usually refers to different vendors
++ 
++ Oracle JDK (main jdk)
++ OpenJDK  (Fully open-source)
++ Amazon Corretto
++ Eclipse Temurin (Adoptium)
++ Microsoft Build of OpenJDK
++ Red Hat OpenJDK
++ IBM Semeru
+
+
 ## Java Architecture
 + download java from oracle
 + java stands by "WORA": Write Once, Run Anywhere
@@ -27,7 +68,7 @@ Java 21 (2023) - Latest LTS version
     JDK = as a developer you install JDK, but for running the java program you just need JRE.
  
 3.  JRE = Java Runtime Environment
-    JRE = JVM + Java Class Libraries  
+    JRE = JVM + Java Class Libraries (additional to JVM we need some othre files to run the code)
     JVM is part of JRE, java program runs inside JRE and JVM is responsible for running that
 
 1.  JVM = Java Virtual Machine
@@ -152,17 +193,115 @@ java MyProgram                # 2. runs MyProgram    (do not use .class since ja
 ```
 
 
-## Java Technologies
+### Java system memory level
 
-+ Spring Framework - Comprehensive framework for enterprise Java
-+ Spring Boot - Simplifies Spring application setup
-+ Hibernate - Object-Relational Mapping (ORM) tool
-+ Jakarta EE - Enterprise edition specifications
-+ Servlets & JSP - Traditional web technologies
-+ Spring MVC - Model-View-Controller framework
-+ JSF - JavaServer Faces for component-based UI
-+ Maven - Dependency management and build tool
-+ Gradle - Flexible build automation tool
+1. Stack Memory
+    a. Follows LIFO (Last In, First Out)
+    b. stack is key-value structure
+    c. stores:
+        - Method calls
+        - Local variables
+        - Function call order
+    d. every method has its own stack
+    e. Each thread has its own stack
+    f. Fast memory access
+    g. Automatically cleaned when a method finishes (No garbage collection needed)
+
+1. Heap
+    a. The heap stores:
+        - Objects
+        - Arrays
+        - Instance variables
+    b. All threads share one heap.
+    c. Slower than stack
+    d. Stores data that must live beyond a single method call
+    e. Garbage Collector (GC) automatically cleans unused objects
+
+```java
+// 1. stack
+void test() {         // When test() ends, a is removed from the stack.
+    int a = 10;   // stored in stack
+}
+// 2. Heap
+class Person {
+    String name;
+}
+Person p = new Person();  // object stored in heap
+// 3. both working together
+void test() {                       // When test() finishes: p is removed from stack.
+    Person p = new Person();      // p (the reference) → stored in stack
+}                                 // new Person() (the object) → stored in heap
+                                  // If no reference points to the Person object anymore, GC will remove it later.
+```
+
+### Reference variable
+
++ In Java, “object” and “reference variable” are two different things
+1. Object:
+    - An object is a real instance
+    - created in heap memory 
+    - Created using the "new" keyword like arrays, objects
+    - Contains the actual data and methods
+    - 
+2. reference variable:
+    - A variable stores the memory address of the "object"
+    - Lives in stack memory
+    - Declared with a specific type
+    - Points to an object in the heap
+
+```java
+String str;                    // Declaration of reference variable
+str = new String("Hello");       // Creation of object and assignment to reference variable
+// in one line
+Person p = new Person();        // new Person() → creates an object in the heap
+                                // p → is not the object, it's only a reference to it
+// for bellow diagram
+class Student {
+    String name;
+    int age;
+    
+    // Constructor
+    public Student(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+    
+    // Method
+    public void display() {
+        System.out.println("Student: " + name + ", Age: " + age);
+    }
+}
+```
+
+```text
+Reference Variable      Object                   # Stack stores references
+[ str ]    ---->    [ "Hello" ]                  # Heap stores objects
+ (Stack)             (Heap)                     # Reference points to object by memory address.
+
+
+STACK MEMORY (Method Area)      HEAP MEMORY (Object Storage)
+┌────────────────────────┐     ┌─────────────────────────────┐
+│                        │     │                             │
+│  REFERENCE VARIABLES   │     │         OBJECTS             │
+│                        │     │                             │
+├────────────────────────┤     ├─────────────────────────────┤
+│ student1 ──────────────┼─────┤ Student Object #1001        │          Student student1 = new Student("John", 20);
+│   [0x1001]             │     │ ┌─────────────────────────┐ │
+│                        │     │ │ name: "John"            │ │
+│                        │     │ | age: 20                 │ │
+│                        │     │ │ methods: ...            │ │
+│                        │     │ └─────────────────────────┘ │
+│ arr ───────────────────┼─────┤                             │
+│   [0x2001]             │     │ int[] Array #2001           │         int[] arr = {10, 20, 30, 40, 50};
+│                        │     │ ┌─────────────────────────┐ │
+│                              │ │ [0] [1] [2] [3] [4]     │ │
+│                        │ │   │ │  10  20  30  40  50     │ │
+│                        │ │   │ └─────────────────────────┘ │
+└────────────────────────┘ │   │                             │
+                               └─────────────────────────────┘
+```
+
+
 
 
 ## Basic
@@ -181,6 +320,7 @@ public class Main {                                  // 'Main' is the name of ou
         System.out.println("Hello, World!");        // 'void': doesn't return any value
     }                                              // The main method is the entry point 
 }                                                 // 'String[] args': parameter that accepts command-line arguments
+// there is no need to create an object for calling the main() in class Main, by default it is the entry point
 ```
 
 ## comments
@@ -205,6 +345,46 @@ a = 12;                 // a is variable and 12 is literal
 int a=1, b=2, c=3;    // multiple variable declaration
 ```
 
+### scope of variables
+
+1. Local Variables
+    - Declared inside a method, constructor, or block
+    - Destroyed when block/method ends
+    - Cannot have default values—you must initialize them
+    - 
+2. Instance Variables
+    - Declared inside a class but outside methods
+    - Belong to an object
+    - Each object has its own copy
+    - Have default values (e.g., 0, null, false)
+    - 
+3. Static (Class) Variables
+    - Declared with the static keyword inside a class
+    - Shared by all objects
+    - Stored in method area of memory
+    - Have default values
+    - 
+4. Block Scope
+    - kind of local variable that defines inside {}
+5. Global variable
+    - there is no true “global variable” like C in java
+
+```java
+class User {
+    String name;            // instance variable
+    static int count = 0;   // static variable
+}
+```
+
+### Constants
+
+```java
+final double PI = 3.14159;
+final int MAX_SIZE = 100;
+```
+
+
+### Access Modifiers
 
 ### operators
 1. arithmetic operators               + - * / % ++ --   
@@ -253,6 +433,8 @@ if (y && x) { }               // short-circuited
 
 
 ### Concatenation
+
++ the only operattor that works with strings is the + operator
 
 ```java
 String s = 3 + "str" + 3;     // 3str3
@@ -329,18 +511,12 @@ boolean flag = true;           // true or false
 ### Non-Primitive Types
 
 + Non-Primitive Data Types:   String, Arrays, Classes, Interfaces, Enums
++ primitive data types starts with small letters but Non-Primitive data types have capital letters
 
 ```java
 String name = "Java Programming";  // Sequence of characters
 int[] numbers = {1, 2, 3, 4, 5};  // Array
 Object obj = new Object();         // Any Java object
-```
-
-### Constants
-
-```java
-final double PI = 3.14159;
-final int MAX_SIZE = 100;
 ```
 
 
@@ -375,6 +551,23 @@ System.out.println(c);      // output: d
 3.141 + 2.0
 3.141 - 2.0
 3.141 / 2.0
+```
+
+### Boolean
+
+```java
+// STATIC METHODS
+Boolean.parseBoolean("true");      // parse string to boolean
+Boolean.valueOf("false");     // string → Boolean object
+Boolean.toString(true);            // boolean → String
+Boolean.compare(true, false);         // compare two booleans (1 if first is true, 0 if equal, -1 if first false)
+Boolean.equals(Boolean.TRUE);      // compare Boolean objects
+
+// INSTANCE METHODS
+Boolean flag = true;
+flag.booleanValue();              // Boolean object → primitive
+flag.toString();                     // Boolean object → String
+flag.compareTo(Boolean.FALSE);      // compareTo returns 1,0,-1
 ```
 
 
@@ -451,12 +644,41 @@ Math.round(3.14);       // → 3
 Math.sin(0);            // → 0
 ```
 
+### Char
++ use single qoute for characters and double qoutes for strings
+
+```java
+char x = "A";                       // error
+String x = 'a string';              // error
+char ch = '\u0041';                 // A       Unicode escape
+char ch = 65;                       // A       ASCII Unicode
+ch++;                               // becomes 'B'  // Character Operations
+char nl = '\n';                     // '\n', '\t', '\r' '\b' and so on are Special Characters (Escape Sequences)
+
+// Character Class (Wrapper)
+Character.isLetter('A');            // → true
+Character.isDigit('5');             // → true
+Character.isWhitespace(' ');        // → true
+Character.isUpperCase('A');         // → true
+Character.isLowerCase('a');         // → true
+
+Character.toUpperCase('b');         // → 'B'
+Character.toLowerCase('H');         // → 'h'
+Character.toTitleCase('ǳ');         // → 'ǲ'
+
+Character.getNumericValue('9');     // → 9
+Character.getNumericValue('A');     // → 10
+Character.digit('F', 16);           // → 15
+Character.toString('A');            // → "A"
+```
+
 ### Strings
+
 
 ```java
 // STRING CREATION
 String s1 = "Hello";                   // String literal
-String s2 = new String("World");       // Using constructor
+String s2 = new String("World");       // Using constructor (string is non-primitive data type)
 
 // LENGTH & ACCESS
 s1.length();                 // length of string
@@ -482,22 +704,55 @@ s1.trim();            // remove leading/trailing spaces
 s1.concat(" World");   // concatenate strings
 ```
 
+### String Pool
 
-### Boolean
++ String literals are stored in String Pool
++ The String Pool is a special memory area inside the Java heap
++ Because strings are used a lot and often repeated (performance), they are stored in String Pool
++ a and b point to the same memory location
++ == compares memory addresses, not text
++ Why Strings must be immutable?
+    - If a string in the pool changed all references to it would unexpectedly change
 
 ```java
-// STATIC METHODS
-Boolean.parseBoolean("true");      // parse string to boolean
-Boolean.valueOf("false");     // string → Boolean object
-Boolean.toString(true);            // boolean → String
-Boolean.compare(true, false);         // compare two booleans (1 if first is true, 0 if equal, -1 if first false)
-Boolean.equals(Boolean.TRUE);      // compare Boolean objects
+String a = "a";                             // saved in String Pool
+String b = "a";                            // saved in String Pool
+String s2 = new String("a");             // Strings are object 
+String s3 = new String("a");             // This always creates a new object in the heap (not the pool)
+String s4 = new String("a").intern();     // forcing String to be stored in String Pool
+System.out.println(s2 == s3);             // false        // compares memory address
+System.out.println(a == s3);             // false       // compares memory address
+System.out.println(a == b);             // true        // compares memory address
+System.out.println(a.equals(s3));        // true        // checks if content matches
 
-// INSTANCE METHODS
-Boolean flag = true;
-flag.booleanValue();              // Boolean object → primitive
-flag.toString();                     // Boolean object → String
-flag.compareTo(Boolean.FALSE);      // compareTo returns 1,0,-1
+// immutable String
+String s = "Hello";                        // strings are immutable
+s = s + " World";                        // This (concatenation) does not modify the original string in heap  --> It creates a new object in heap
+
+//  Heap (String Pool)
+//  -------------------------------
+//  "Hello"  ← s                        // does not modify the original string in heap
+//  "Hello World"  ← new value          // creates a new object in heap (add new record)
+```
+
+
+### String Builder and String Buffer
+
++ StringBuilder and StringBuffer are mutable
++ StringBuilder is faster than StringBuffer
++ StringBuffer is not thread safe but StringBuilder is
++ You can change their content without creating new objects
++ use these when you want to manipulate strings
+
+```java
+StringBuilder sb = new StringBuilder("Hello");
+sb.append(" World");                                // Only one object exists, modified in place
+sb.delete(6, 11);                                   // Delete from index 6 to 10
+sb.toString();                                     // Convert to String
+
+//  Heap
+//  -------------------------------
+//  "Hello"  ← sb   ---> in the same place "Hello World"
 ```
 
 
@@ -594,19 +849,35 @@ float result = a + b;   // int → float (automatic)   // 35.5
 
 ### Array
 
-+ Arrays in Java are fixed size; cannot grow dynamically.
++ Arrays in Java are fixed size; cannot grow dynamically like python and js
++ drawbacks:
+    - in memory array allocated the continuest space, so if you specify the size you cannot change it
+    - Arrays are homogeneous, meaning all elements must be of the same type
+    - No Built-In Methods like add(), remove(), sort()
+    - Wasted Memory: If you create a large array but use only a few elements
+    - Does Not Support Generic Behavior
+    - for searching it will traverse between the elements
+    - 
 + For dynamic arrays, consider using ArrayList.
-+ 2D arrays can be rectangular or jagged (different column lengths).
 
 ```java
 
-// 1D array
+// 1D array                             // use array when you need fiexd size of values
 int[] arr1 = new int[5];               // default values 0
 int[] arr2 = {1, 2, 3, 4, 5};          // initialized with values
+int a[] = {1};                          // cpp style
+int[] a = {1};                          // java style
+int[] a, b;                             // both are int arrays
+int a[], b;                             // a is array, b is just int (confusing!)
+System.out.print(arr1)                // [I@372f7a8d     address
 
 // 2D array
 int[][] arr2D = new int[2][3];         // 2 rows, 3 columns
 int[][] arr2DInit = {{1,2,3}, {4,5,6}}; // initialized
+
+// jagged array                          // 2D arrays can be rectangular or jagged (different column lengths).
+int [][] a = new int [3][];                // jagged array
+int [][] a = {{1,2,3}, {1}, {1,2}}
 
 // ACCESS & LENGTH
 arr2[0];                   // access element at index 0
@@ -616,7 +887,7 @@ arr2D.length;               // number of rows
 arr2D[0].length;            // number of columns in first row
 
 // Loop
-for(int i = 0; i < arr2.length; i++) {}
+for(int i = 0; i < arr2.length; i++) {}      // i is columns
 for(int val : arr2) {}                      // Enhanced for loop
 
 // Methods
@@ -814,8 +1085,8 @@ do {
 
 // 4. enhanced for
 int[] nums = {10, 20, 30};        // iterate over arrays or collections
-for (int n : nums) {
-    System.out.println(n);
+for (int n : nums) {              // return one value at a time: 10, 20, 30
+    System.out.println(n);         // it knows the length of array (no exception)
 }
 ```
 
@@ -852,13 +1123,60 @@ for (int i = 1; i <= 3; i++) {
 + Java removed goto from cpp since it makes code hard to read and debug
 
 
+### block
+
++ A `block` is a group of statements enclosed in { }
++ Blocks are used to group statements (Execute multiple lines as one)
++ It defines a new `scope` for variables and controls execution
++ `scope` means where a variable can be accessed in the code (The permission of accessing a variable)
+
+1. Local Block
+2. Method Block
+3. if Block and loop Block
+4. class Block
+5. static Block
+6. Instance Initialization Block
+
+###### 1. local block
+
++ local block is inside a method
++ it is created when a function is called
+
+```java
+void test() {                           // method block
+    {                                  // local block
+        int x = 10;                    // block will execute normally (it just deines a new scope)
+        System.out.println(x);
+    }
+    // x is not accessible here
+}
+```
+
+###### 2. instance block
+
++ An instance block is a block of code inside a class that runs every time an object is created, before the constructor.
+
+```java
+class Test {
+    int x = 10;
+    {                                     // instance block
+        System.out.println("Hello");
+    }
+    staic{                               // static block
+        System.out.println("Hello2");
+    }
+}
+Test t = new Test();          // prints Hello, Hello2
+```
+
+
 ### function
 
 + Functions in Java are called methods
 + Return values can be stored or used directly in expressions
 + In Java, you cannot change the order of parameters when calling a method like python -> we can ue method overloading
 + Default parameters do not exist → use overloading.
-+ Overloaded methods must have different parameter lists
++ Overloaded methods must have different parameter lists (return type does not matter)
 + Java is strictly "call by value", but the behavior differs for primitives vs objects.
 
 
@@ -958,6 +1276,49 @@ modifyObject(originalPerson);                            // 4. call the method
 // 8. method chaining
 ```
 
+#### return multiplt values
+
++ In Java, a method cannot directly return two different types at the same time
++ ways to simulate returning multiple types:
+    1. Use a Class (Best Practice)
+    2. Return a Pair or Tuple
+
+
+```java
+// 0. limitaion in java
+public int func(int num){        // we cannot do this in java
+    if num > 10{ return 10}
+    else { return "string"}
+}
+
+// 1. Use a Wrapper class
+class Result {
+    int number;
+    String text;
+
+    Result(int number, String text) {
+        this.number = number;
+        this.text = text;
+    }
+}
+Result test(int num) {
+    if (num > 10)
+        return new Result(3, null);
+    else
+        return new Result(null, "string");
+}
+
+// 2. Return a Pair or Tuple
+
+import javafx.util.Pair;                       // import library
+Pair<String, Integer> test(int num) {
+    if (num > 10)
+        return new Pair<>("number", 3);
+    else
+        return new Pair<>("string", null);
+}
+```
+
 
 ### shallow copy and deep copy
 
@@ -970,6 +1331,7 @@ modifyObject(originalPerson);                            // 4. call the method
 
 ### Exception Handling
 
++ Exception is runtime error (not compile time)
 + An exception is an event that stops the normal flow of a program.
 + events like: dividing by zero, file not found, array out of bounds. 
 
@@ -1031,6 +1393,142 @@ Unboxing → wrapper → primitive
 + JVM is responsible for creating objects in java
 
 
+```java
+public class Calculator {
+    public int add(int a, int b) {
+        return a + b;
+    }
+}
+
+public class Demo{
+
+
+    // public static void main(String[] args) {
+    //     Demo demo = new Demo();
+    //     System.out.println(demo.sum);
+    //     demo.calc.add();
+    // }
+    public static void main(String[] args) {
+        int num1 = 10;
+        int num2 = 20;
+        Calculator calc = new Calculator();
+        int result = calc.add(1, 2);
+        System.out.println(result);
+    }
+}
+
+```
+
+### static
+
+1. static variable
+2. static method
+3. static block
+4. static class
+
+###### 1. static variable
+
++ also called a class variable
++ Exists once in memory, shared among all objects
++ Lifetime: is created when the class is loaded and exists until the program ends.
++ you can access with object, but avoid it. use staic way (using Class name)
+
+```java
+class Phone{
+    int number = 10;
+    static String brand = "Samsung";
+}
+
+Phone a = new Phone();
+System.out.print(Phone.brand);         // accessed using the class name      // Samsung
+System.out.print(a.brand);             // accessed using the object (avoid)  // Samsung
+
+a.brand= "S1";                          // we can change the static variable using an object (avoid)
+System.out.print(a.brand);             // S1  (avoid)
+System.out.print(Phone.brand);         // S1    // shared among all objects
+
+Phone.brand = "S2";                   // we can change the static variable using the class
+System.out.print(a.brand);             // S2
+System.out.print(Phone.brand);         // S2  
+```
+
+###### 2. static method
+
++ Can access only static variables and static methods directly
++ Cannot use this or super
+
+```java
+class Demo {
+    int x = 5;
+    static int y = 10;            // static variable
+
+    static void test() {         // static method
+        System.out.println(y);   // OK
+        System.out.println(x);   // ERROR
+    }
+}
+Demo.test();                     // call static method
+Demo a = new Demo();
+a.test();                       // call static method (avoid)
+
+// How to access instance variables in static method?
+class Demo {
+    int x = 5;
+    int y = 10;            
+    static void test(obj) {                 // static method
+        System.out.println(obj.y, obj.x);   // OK
+    }
+}
+```
+
+##### 3. static main
+
++ if we do not use static keyword in main, it will be a non-static method and we need to create an object to call it
++ since the main method is the entry point of the execution, we cannot call the main method using the class name (deadlock)
+
+
+###### 4. static block
+
+1. static block
+    a. Object-level initialization
+    b. useful for initializing static variables (constructor is not good, since it will initialize multiple times)
+    c. static block is executed when the class is loaded into memory (run only once)
+    d. Runs before any object is created
+    e. Can access only static members
+    f. Runs before instance block
+
+1. instance block
+    a. Class-level initialization
+    a. instance block runs every time an object of the class is created
+    b. Runs before the constructor
+    c. Has access to instance members + static members
+
+
+```java
+class Mobile{
+    int number;
+    String name = "mobile";
+    static String brand;
+    {                                            // 1. instance block
+        System.out.println("Instance block");
+        System.out.println(number);              // 0 
+        number = 20;                             // initialize instance variable
+        System.out.println(number);              // 20
+    }
+    static {                                    // 2. static block
+        System.out.println("Static block");
+        System.out.println(brand);              // null
+        brand = "Samsung";                        // initialize static variable
+        System.out.println(brand);              // Samsung
+    }
+}
+
+```
+
+###### 5. static class
+
++ we cannot create an object from a static class
+
 ### Classes & Objects
 
 ```java
@@ -1039,6 +1537,7 @@ class Person {
     Person(String name){ this.name=name; }
 }
 ```
+
 
 ### Constructors
 
